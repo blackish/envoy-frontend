@@ -1,0 +1,1181 @@
+<template>
+  <div class="hello">
+    <el-divider>Filter chain</el-divider>
+    <el-row>
+      <el-col :span="4">
+        Match:<el-switch v-model="filterChainMatch" @change="filterChainMatchChange"></el-switch>
+      </el-col>
+      <el-col :span="20">
+        <el-row>
+          <el-col>
+            <div v-if="filterChainMatchExist">
+              <el-card class="box-card">
+                <div slot="header" class="clearfix">
+                  <span>Source match</span><el-button style="float: right; padding: 3px 0" type="text" @click="sourceMatchVisible = true">Add source match</el-button>
+                </div>
+                <div v-if="filterChainMatchSource">
+                  <div v-for="(fcms,fcmsindex) in data.filterChainMatch.sourcePrefixRanges" v-bind:key="fcms">
+                    <el-input v-bind:value="fcms.addressPrefix"><template slot="prepend">Prefix:</template></el-input>
+                    <el-input v-bind:value="fcms.prefixLen">
+                      <template slot="prepend">Prefix length</template>
+                      <template slot="append">
+                        <el-button type="danger" icon="el-icon-delete" circle @click="removeSourceMatch(fcmsindex)"></el-button>
+                      </template>
+                    </el-input>
+                  </div>
+                </div>
+              </el-card>
+            </div>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col>
+            <div v-if="filterChainMatchExist">
+              <el-card class="box-card">
+                <div slot="header" class="clearfix">
+                  <span>Domain match</span><el-button style="float: right; padding: 3px 0" type="text" @click="domainMatchVisible = true">Add domain match</el-button>
+                </div>
+                <div v-if="filterChainMatchDomain">
+                  <div v-for="(fcmd,fcmdindex) in data.filterChainMatch.serverNames" v-bind:key="fcmd">
+                    <el-input v-bind:value="fcmd"><template slot="prepend">Server name:</template><template slot="append"><el-button type="danger" icon="el-icon-delete" circle @click="removeDomainMatch(fcmdindex)"></el-button></template></el-input>
+                  </div>
+                </div>
+              </el-card>
+            </div>
+          </el-col>
+        </el-row>
+      </el-col>
+    </el-row>
+    <el-collapse-item title="Details" style="float: center; padding: 3px 0" class="hello">
+    <el-divider>Rate limit</el-divider>
+    <el-row>
+      <el-col :span="4">
+        <el-button type="success" @click="rateLimitVisible=true">Set</el-button>
+        <el-button type="danger" v-bind:disabled="!hasRateLimit" @click="data.filters.shift()">Clear</el-button>
+      </el-col>
+      <el-col :span="20">
+          <el-card class="box-card">
+            <div slot="header" class="clearfix">
+              <span>Rate limit</span>
+            </div>
+          <el-input v-bind:value="nameRateLimit" v-bind:disabled="!hasRateLimit"><template slot="prepend">Stat prefix:</template></el-input>
+          <el-input v-bind:value="maxTokens" v-bind:disabled="!hasRateLimit" type="number"><template slot="prepend">Max tokens:</template></el-input>
+          <el-input v-bind:value="tokensPerFill" placeholder="0" v-bind:disabled="!hasRateLimit" type="number"><template slot="prepend">Token per fill:</template></el-input>
+          <el-input v-bind:value="fillInterval" placeholder="0s" v-bind:disabled="!hasRateLimit"><template slot="prepend">Fill interval:</template></el-input>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-divider>Traffic filter</el-divider>
+    <div v-if="!hasTcpProxy && !hasHttpProxy">
+      <el-row>
+        <el-col :span="24">
+          <el-button type="success" @click="addTrafficFilterVisible=true">Add traffic filter</el-button>
+        </el-col>
+      </el-row>
+    </div>
+    <div v-if="hasTcpProxy || hasHttpProxy">
+      <el-row>
+        <el-col :span="4">
+          <el-button type="danger" @click="removeTrafficFilter">Delete</el-button>
+        </el-col>
+        <el-col :span="20">
+          <el-card class="box-card">
+            <div slot="header" class="clearfix">
+              <span v-if="hasTcpProxy">TCP Proxy</span>
+              <span v-if="hasHttpProxy">HTTP Proxy</span>
+            </div>
+            <div v-if="hasTcpProxy">
+              <el-row>
+                <el-col :span="4">
+                  <el-button type="success" @click="tcpProxyForm.statPrefix=statPrefix;tcpProxyForm.cluster=tcpProxyCluster;tcpProxyVisible=true">Set</el-button>
+                </el-col>
+                <el-col :span="16">
+                  <el-input v-bind:value="statPrefix"><template slot="prepend">Stat prefix:</template></el-input>
+                  <el-input v-bind:value="tcpProxyCluster"><template slot="prepend">Cluster:</template></el-input>
+                  <div v-if="hasTcpHashPolicy"><el-input value="Source IP"><template slot="prepend">Hash policy:</template></el-input></div>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="20">
+                  <span>Logging:</span><el-button v-bind:disabled="hasLogging" type="success" @click="enableAccessLog">Enable</el-button><el-button v-bind:disabled="!hasLogging" type="danger" @click="disableAccessLog">Disable</el-button>
+                </el-col>
+              </el-row>
+            </div>
+            <div v-if="hasHttpProxy">
+              <el-row>
+                <el-col :span="4">
+                  <el-button type="success" @click="tcpProxyForm.statPrefix=statPrefix;httpProxyStatVisible=true">Set</el-button>
+                </el-col>
+                <el-col :span="16">
+                  <el-input v-bind:value="statPrefix"><template slot="prepend">Stat prefix:</template></el-input>
+                </el-col>
+              </el-row>
+              <el-divider></el-divider>
+              <el-row>
+                <el-col :span="4">
+                  <span>External authz:</span><el-button v-bind:disabled="hasExtAuthz>-1" type="success" @click="extAuthzServiceVisible=true">Enable</el-button><el-button v-bind:disabled="hasExtAuthz==-1" type="danger" @click='$emit("delExtAuthzService",index,getExtAuthzService())'>Disable</el-button>
+                </el-col>
+                <el-col :span="16">
+                  <div v-if="hasExtAuthz>-1">
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
+                        <span>Global RateLimit</span>
+                      </div>
+                      <div>
+                        <el-input :value="extAuthzFailureModeAllow"><template slot="prepend">Failure mode allow</template></el-input>
+                      </div>
+                    </el-card>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-divider></el-divider>
+              <el-row>
+                <el-col :span="4">
+                  <span>Global RateLimit:</span><el-button v-bind:disabled="hasGlobalRateLimit>-1" type="success" @click="globalRateLimitServiceVisible=true">Enable</el-button><el-button v-bind:disabled="hasGlobalRateLimit==-1" type="danger" @click='$emit("delGlobalRateLimitService",index,getGlobalRateLimitService())'>Disable</el-button>
+                </el-col>
+                <el-col :span="16">
+                  <div v-if="hasGlobalRateLimit>-1">
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
+                        <span>Global RateLimit</span>
+                      </div>
+                      <div>
+                        <el-input :value="globalRateLimitDomain"><template slot="prepend">RateLimit domain</template></el-input>
+                        <el-input :value="globalRateLimitFailureModeDeny"><template slot="prepend">Failure mode deny</template></el-input>
+                      </div>
+                    </el-card>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-divider></el-divider>
+              <el-row>
+                <el-col :span="4">
+                  <span>Logging:</span><el-button v-bind:disabled="hasLogging" type="success" @click="enableAccessLog">Enable</el-button><el-button v-bind:disabled="!hasLogging" type="danger" @click="disableAccessLog">Disable</el-button>
+                </el-col>
+                <el-col :span="16">
+                  <div v-if="hasLogging">
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
+                        <span>Request headers to log</span><el-button style="float: right; padding: 3px 0" type="text" @click="accessLogHeadersForm.requestHeader='';accessLogHeadersForm.responseHeader='';accessLogRequestHeadersVisible = true">Add request header</el-button>
+                      </div>
+                      <div v-for="(acrqh,acrqhindex) in data.filters[data.filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalRequestHeadersToLog" v-bind:key="acrqh">
+                        <el-input v-bind:value="acrqh"><template slot="prepend">Server name:</template><template slot="append"><el-button type="danger" icon="el-icon-delete" circle @click="removeAccessLogRequestHeader(acrqhindex)"></el-button></template></el-input>
+                      </div>
+                    </el-card>
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
+                        <span>Response headers to log</span><el-button style="float: right; padding: 3px 0" type="text" @click="accessLogHeadersForm.requestHeader='';accessLogHeadersForm.responseHeader='';accessLogResponseHeadersVisible = true">Add response header</el-button>
+                      </div>
+                      <div v-for="(acrsh,acrshindex) in data.filters[data.filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalResponseHeadersToLog" v-bind:key="acrsh">
+                        <el-input v-bind:value="acrsh"><template slot="prepend">Server name:</template><template slot="append"><el-button type="danger" icon="el-icon-delete" circle @click="removeAccessLogResponseHeader(acrshindex)"></el-button></template></el-input>
+                      </div>
+                    </el-card>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-divider>Headers</el-divider>
+              <el-row>
+                <el-col :span="24">
+                  <el-card class="box-card">
+                    <div slot="header" class="clearfix">
+                      <span>X-Forwarded-For header</span><el-button style="float: right; padding: 3px 0" type="text" @click="setXffVisible=true">Change</el-button>
+                    </div>
+                    <div>
+                      <el-row>
+                        <el-col>
+                          Use remote address: <el-switch :value="isUseRemoteAddress"></el-switch>
+                        </el-col>
+                        <el-col>
+                          Skip XFF append: <el-switch :value="isSkipXffAppend">Skip XFF Append</el-switch>
+                        </el-col>
+                      </el-row>
+                    </div>
+                  </el-card>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="24">
+                  <el-input v-bind:value="headersLimit" v-bind:disabled="!hasHeadersLimit"><template slot="prepend">Header Limit:</template><template slot="append"><el-button icon="el-icon-edit" @click="headersLimitVisible=true"></el-button></template></el-input>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="24">
+                  <el-input v-bind:value="headersCountLimit" v-bind:disabled="!hasHeadersCountLimit"><template slot="prepend">Header Count Limit:</template><template slot="append"><el-button icon="el-icon-edit" @click="headersCountLimitVisible=true"></el-button></template></el-input>
+                </el-col>
+                <el-col :span="24">
+                  <el-input v-bind:value="maxStreamDurationLimit" v-bind:disabled="!hasMaxStreamDurationLimit"><template slot="prepend">Max stream duration:</template><template slot="append"><el-button icon="el-icon-edit" @click="headersCountLimitVisible=true"></el-button></template></el-input>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="4">
+                  <span>Upgrade:</span><el-button v-bind:disabled="hasUpgrade" type="success" @click="enableUpgrade">Enable</el-button><el-button v-bind:disabled="!hasUpgrade" type="danger" @click="disableUpgrade">Disable</el-button>
+                </el-col>
+                <el-col :span="16">
+                  <div v-if="hasUpgrade">
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
+                        <span>Add upgrade protocol</span><el-button style="float: right; padding: 3px 0" type="text" @click="upgradeForm.protocol='';upgradeVisible = true">Add upgrade protocol</el-button>
+                      </div>
+                      <div v-for="(upgrdproto,upgrdprotoindex) in data.filters[data.filters.length - 1].typedConfig.upgradeConfigs" v-bind:key="upgrdproto">
+                        <el-input v-bind:value="upgrdproto.upgradeType"><template slot="prepend">Upgrade protocol:</template><template slot="append"><el-button type="danger" icon="el-icon-delete" circle @click="removeUpgrade(upgrdprotoindex)"></el-button></template></el-input>
+                      </div>
+                    </el-card>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col :span="24">
+                  <el-button type="success" style="float: left;" @click="addVirtualHostVisible=true">Add virtual host</el-button>
+                </el-col>
+              </el-row>
+              <el-row v-for="(vh,vhindex) in data.filters[data.filters.length - 1].typedConfig.routeConfig.virtualHosts" :key="vh">
+                  <el-divider>Virtual host</el-divider>
+                <el-col :span="4">
+                  <el-button type="danger" @click="$emit('delVH',index,vhindex)">Delete virtual host</el-button>
+                  <el-button icon="el-icon-arrow-up" @click="$emit('upVH',index,vhindex)"></el-button>
+                  <el-button icon="el-icon-arrow-down" @click="$emit('downVH',index,vhindex)"></el-button>
+                </el-col>
+                <el-col :span="20">
+                  <VirtualHost :data="vh" :index="vhindex" :nodeid="nodeid" @addDom="vhAddDom" @delDom="vhDelDom" @addRoute="vhAddRoute" @delRoute="vhDelRoute" @addConsistentHash="vhAddConsistentHash" @delConsistentHash="vhDelConsistentHash" @upConsistentHash="vhUpConsistentHash" @downConsistentHash="vhDownConsistentHash" @addRLDescriptor="vhAddRLDescriptor" @delRLDescriptor="vhDelRLDescriptor" @upRoute="vhUpRoute" @downRoute="vhDownRoute"></VirtualHost>
+                </el-col>
+              </el-row>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
+    <el-row>
+      <el-col :span="4">
+        <el-button type="success" :disabled="hasTransportSocket" @click="$emit('addTls',index)">Enable SSL</el-button><el-button type="danger" :disabled="!hasTransportSocket" @click="$emit('delTls',index)">Disable SSL</el-button>
+      </el-col>
+      <el-col :span="20">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>SSL configuration</span>
+          </div>
+          <div v-if="hasTransportSocket">
+            <el-card class="box-card">
+              <div slot="header" class="clearfix">
+                <span>TLS parameters</span>
+              </div>
+              <div>
+                <el-input :value="tlsMinimumProtocolVersion"><template slot="prepend">TLS minimum version</template><template slot="append"><el-button icon="el-icon-edit" @click="tlsProtocolVersionForm.type='tlsMinimumProtocolVersion';tlsProtocolVersionVisible=true"></el-button><el-button icon="el-icon-delete" @click="delTlsMinimumProtocolVersion"></el-button></template></el-input>
+                <el-input :value="tlsMaximumProtocolVersion"><template slot="prepend">TLS maximum version</template><template slot="append"><el-button icon="el-icon-edit" @click="tlsProtocolVersionForm.type='tlsMaximumProtocolVersion';tlsProtocolVersionVisible=true"></el-button><el-button icon="el-icon-delete" @click="$emit('delTlsProtocolVersion',index,'tlsMaximumProtocolVersion')"></el-button></template></el-input>
+              </div>
+              <el-card class="box-card">
+                <div slot="header" class="clearfix">
+                  <span>TLS ciphers</span>
+                  <el-button style="float: right; padding: 3px 0" type="text" @click="tlsCipherSuitesVisible=true">Set cipher</el-button>
+                </div>
+                <div v-if="hasTlsCiphers">
+                  <el-row v-for="(t,ti) in data.transportSocket.typedConfig.commonTlsContext.tlsParams.cipherSuites" :key="t">
+                    <el-col>
+                      <el-input :value="t"><template slot="append"><el-button icon="el-icon-delete" @click="$emit('delTlsCipherSuites',index,ti)"></el-button></template></el-input>
+                    </el-col>
+                  </el-row>
+                </div>
+              </el-card>
+              <el-card class="box-card">
+                <div slot="header" class="clearfix">
+                  <span>Certificates</span>
+                  <el-button style="float: right; padding: 3px 0" type="text" @click="tlsAddCertificateVisible=true">Add certificate</el-button>
+                </div>
+                <div v-if="hasTlsCertificates">
+                  <el-row v-for="(c,ci) in data.transportSocket.typedConfig.commonTlsContext.tlsCertificates" :key="c">
+                    <el-col>
+                      <el-input :value="c.certificateChain.inlineString"><template slot="prepend">Certificate chain</template><template slot="append"><el-button icon="el-icon-delete" @click="$emit('delTlsCertificate',index,ci)"></el-button></template></el-input>
+                    </el-col>
+                  </el-row>
+                </div>
+                <div v-if="hasSdsConfig">
+                  <el-row v-for="(c,ci) in data.transportSocket.typedConfig.commonTlsContext.tlsCertificateSdsSecretConfigs" :key="c">
+                    <el-col>
+                      <el-input :value="c.name"><template slot="prepend">Certificate secret</template><template slot="append"><el-button icon="el-icon-delete" @click="$emit('delTlsCertificate',index,ci)"></el-button></template></el-input>
+                    </el-col>
+                  </el-row>
+                </div>
+              </el-card>
+              <el-card class="box-card">
+                <div slot="header" class="clearfix">
+                  <span>User verification</span><el-button style="float: left; padding: 3px 0" type="text" @click="tlsValidateVisible=true">Set</el-button><el-button style="float: right; padding: 3px 0" type="text" @click="$emit('delTlsValidate',index)">Clear</el-button>
+                </div>
+                <div v-if="hasTlsValidationContext">
+                  <el-input :value="data.transportSocket.typedConfig.commonTlsContext.validationContext.validationContextSdsSecretConfig.name"><template slot="prepend">Trusted CA secret</template></el-input>
+                  <el-checkbox :value="tlsValidateUser">Validate user</el-checkbox>
+                </div>
+              </el-card>
+            </el-card>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    </el-collapse-item>
+    <el-dialog title="Validate user" :visible.sync="tlsValidateVisible">
+      <el-form ref="tlsValidateForm">
+        <el-form-item label="Trusted CA secret">
+          <el-input v-model="tlsValidateForm.trustedCa"></el-input>
+        </el-form-item>
+        <el-form-item label="Validate client">
+          <el-checkbox v-model="tlsValidateForm.validateClient"></el-checkbox>
+        </el-form-item>
+        <el-button type="primary" @click="tlsValidateVisible=false;$emit('setTlsValidate',index,tlsValidateForm)">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Add traffic filter" :visible.sync="addTrafficFilterVisible">
+      <el-form ref="addTrafficFilterForm">
+        <el-form-item label="Traffic filter type">
+          <el-select v-model="addTrafficFilterForm.type">
+            <el-option label="TcpProxy" value="TcpProxy"></el-option>
+            <el-option label="HttpProxy" value="HttpProxy"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-button type="primary" @click="addTrafficFilterVisible=false;$emit('addTrafficFilter',index,addTrafficFilterForm.type)">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Add TLS certificate" :visible.sync="tlsAddCertificateVisible">
+      <el-form ref="tlsCertificateForm">
+        <el-form-item label="Certificate secret name">
+          <el-select v-model="tlsCertificateForm.certificate">
+            <div v-for="i in configSecrets.data.secrets" :key="i">
+              <el-option :label="i.name" :value="i.name"></el-option>
+            </div>
+          </el-select>
+        </el-form-item>
+        <el-button type="primary" @click="tlsAddCertificateVisible=false;$emit('addTlsCertificate',index,tlsCertificateForm)">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Tls cipher suites" :visible.sync="tlsCipherSuitesVisible">
+      <el-form ref="tlsCipherSuitesForm">
+        <el-select multiple v-model="tlsCipherSuitesForm.suites" placeholder="cipher suites">
+          <el-option label="ECDHE-ECDSA-AES128-GCM-SHA256" value="ECDHE-ECDSA-AES128-GCM-SHA256"></el-option>
+          <el-option label="ECDHE-RSA-AES128-GCM-SHA256" value="ECDHE-RSA-AES128-GCM-SHA256"></el-option>
+          <el-option label="ECDHE-ECDSA-AES128-SHA" value="ECDHE-ECDSA-AES128-SHA"></el-option>
+          <el-option label="ECDHE-RSA-AES128-SHA" value="ECDHE-RSA-AES128-SHA"></el-option>
+          <el-option label="AES128-GCM-SHA256" value="AES128-GCM-SHA256"></el-option>
+          <el-option label="AES128-SHA" value="AES128-SHA"></el-option>
+          <el-option label="ECDHE-ECDSA-AES256-GCM-SHA384" value="ECDHE-ECDSA-AES256-GCM-SHA384"></el-option>
+          <el-option label="ECDHE-RSA-AES256-GCM-SHA384" value="ECDHE-RSA-AES256-GCM-SHA384"></el-option>
+          <el-option label="ECDHE-ECDSA-AES256-SHA" value="ECDHE-ECDSA-AES256-SHA"></el-option>
+          <el-option label="ECDHE-RSA-AES256-SHA" value="ECDHE-RSA-AES256-SHA"></el-option>
+          <el-option label="AES256-GCM-SHA384" value="AES256-GCM-SHA384"></el-option>
+          <el-option label="AES256-SHA" value="AES256-SHA"></el-option>
+        </el-select>
+        <el-button type="primary" @click="tlsCipherSuitesVisible=false;$emit('setTlsCipherSuites',index,tlsCipherSuitesForm)">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Set TLS protocol version" :visible.sync="tlsProtocolVersionVisible">
+      <el-form ref="tlsProtocolVersionForm">
+        <el-form-item label="TLS protocol version">
+          <el-select v-model="tlsProtocolVersionForm.tlsProtocolVersion" placeholder="tls version">
+            <el-option label="TLSv1_0" value="TLSv1_0"></el-option>
+            <el-option label="TLSv1_1" value="TLSv1_1"></el-option>
+            <el-option label="TLSv1_2" value="TLSv1_2"></el-option>
+            <el-option label="TLSv1_3" value="TLSv1_3"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-button type="primary" @click="tlsProtocolVersionVisible=false;$emit('setTlsProtocolVersion',index,tlsProtocolVersionForm)">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Add virtual host" :visible.sync="addVirtualHostVisible">
+      <el-form ref="addVirtualHostForm">
+        <el-form-item label="Virtual host name">
+          <el-input v-model="addVirtualHostForm.name"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitAddVirtualHost">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Rate limit" :visible.sync="rateLimitVisible">
+      <el-form ref="rateLimitForm">
+        <el-form-item label="Stat prefix">
+          <el-input v-model="rateLimitForm.statPrefix"></el-input>
+        </el-form-item>
+        <el-form-item label="Max tokens">
+          <el-input v-model.number="rateLimitForm.maxTokens" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Tokens per fill">
+          <el-input v-model.number="rateLimitForm.tokensPerFill" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Fill interval">
+          <el-col :span="10">
+            <el-input v-model.number="rateLimitForm.fillInterval" type="number"></el-input>
+          </el-col>
+          <el-col :span="5">
+            <el-select v-model="rateLimitForm.fillIntervalUnit">
+              <el-option value="s" label="Seconds"></el-option>
+              <el-option value="m" label="Minutes"></el-option>
+              <el-option value="h" label="Hours"></el-option>
+            </el-select>
+          </el-col>
+        </el-form-item>
+        <el-button type="primary" @click="submitRateLimit">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Source match" :visible.sync="sourceMatchVisible">
+      <el-form ref="sourceMatchForm">
+        <el-form-item label="Source prefix">
+          <el-input v-model="sourceMatchForm.prefix"></el-input>
+        </el-form-item>
+        <el-form-item label="Prefix length">
+          <el-input v-model.number="sourceMatchForm.length" type="number"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitSourceMatch">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Server name match" :visible.sync="domainMatchVisible">
+      <el-form ref="domainMatchForm">
+        <el-form-item label="Server name">
+          <el-input v-model="domainMatchForm.domain"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitDomainMatch">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="TCP Proxy" :visible.sync="tcpProxyVisible">
+      <el-form ref="tcpProxyForm">
+        <el-form-item label="Stat prefix">
+          <el-input v-model="tcpProxyForm.statPrefix"></el-input>
+        </el-form-item>
+        <el-form-item label="Cluster">
+          <el-input v-model="tcpProxyForm.cluster"></el-input>
+        </el-form-item>
+        <el-form-item label="Source IP hash">
+          <el-checkbox v-model="tcpProxyForm.hashPolicySourceIP">Hash policy source ip</el-checkbox>
+        </el-form-item>
+        <el-button type="primary" @click="submitTcpProxy">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="HTTP Proxy" :visible.sync="httpProxyStatVisible">
+      <el-form ref="tcpProxyForm">
+        <el-form-item label="Stat prefix">
+          <el-input v-model="tcpProxyForm.statPrefix"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitHttpProxyStat">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Accesslog Request Headers" :visible.sync="accessLogRequestHeadersVisible">
+      <el-form ref="accessLogHeadersForm">
+        <el-form-item label="Request header">
+          <el-input v-model="accessLogHeadersForm.requestHeader"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitAccessLogHeaders">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Upgrade" :visible.sync="upgradeVisible">
+      <el-form ref="upgradeForm">
+        <el-form-item label="Upgrade protocol">
+          <el-input v-model="upgradeForm.protocol"></el-input>
+        </el-form-item>
+      </el-form>
+      <el-button type="primary" @click="submitUpgrade">Add</el-button>
+      <el-button>Cancel</el-button>
+    </el-dialog>
+    <el-dialog title="Accesslog Response Headers" :visible.sync="accessLogResponseHeadersVisible">
+      <el-form ref="accessLogHeadersForm">
+        <el-form-item label="Response header">
+          <el-input v-model="accessLogHeadersForm.responseHeader"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitAccessLogHeaders">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Change X-Forwarded-For action" :visible.sync="setXffVisible">
+      <el-form ref="setXffForm">
+        <el-form-item label="Use Remote Address">
+          <el-switch v-model="setXffForm.useRemoteAddress"></el-switch>
+        </el-form-item>
+        <el-form-item label="Skip XFF append">
+          <el-switch v-model="setXffForm.skipXffAppend"></el-switch>
+        </el-form-item>
+        <el-button type="primary" @click="$emit('setXff', index, setXffForm); setXffVisible=false">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Global RateLimit" :visible.sync="globalRateLimitServiceVisible">
+      <el-form ref="globalRateLimitServiceForm">
+        <el-form-item label="RateLimit Domain">
+          <el-input v-model="globalRateLimitServiceForm.domain"></el-input>
+        </el-form-item>
+        <el-form-item label="Failure Mode Deny">
+          <el-switch v-model="globalRateLimitServiceForm.failureModeDeny"></el-switch>
+        </el-form-item>
+        <el-button type="primary" @click="$emit('setGlobalRateLimitService', index, globalRateLimitServiceForm); globalRateLimitServiceVisible=false">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Request headers size limit" :visible.sync="headersLimitVisible">
+      <el-form ref="headersLimitForm">
+        <el-form-item label="Enable headers limit">
+          <el-checkbox v-model="headersLimitForm.enabled"></el-checkbox>
+        </el-form-item>
+        <div v-if="headersLimitForm.enabled">
+          <el-form-item label="Headers limit (Kb) Max: 90">
+            <el-input v-model.number="headersLimitForm.headersLimit" type="number"></el-input>
+          </el-form-item>
+        </div>
+        <el-button type="primary" @click="$emit('setHeadersLimit', index, headersLimitForm); headersLimitVisible=false">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Http Common Options" :visible.sync="headersCountLimitVisible">
+      <el-form ref="headersCountLimitForm">
+        <el-form-item label="Http Common Options">
+          <el-checkbox v-model="headersCountLimitForm.enabled"></el-checkbox>
+        </el-form-item>
+        <div v-if="headersCountLimitForm.enabled">
+          <el-form-item label="Headers count limit">
+            <el-input v-model.number="headersCountLimitForm.headersCountLimit" type="number"></el-input>
+          </el-form-item>
+          <el-form-item label="Max Stream Duration (seconds)">
+            <el-input v-model.number="headersCountLimitForm.maxStreamDuration" type="number"></el-input>
+          </el-form-item>
+        </div>
+        <el-button type="primary" @click="$emit('setHeadersCountLimit', index, headersCountLimitForm); headersCountLimitVisible=false">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="External Authz" :visible.sync="extAuthzServiceVisible">
+      <el-form ref="extAuthzServiceForm">
+        <el-form-item label="Failure Mode Allow">
+          <el-switch v-model="extAuthzServiceForm.failureModeAllow"></el-switch>
+        </el-form-item>
+        <el-button type="primary" @click="$emit('setExtAuthzService', index, extAuthzServiceForm); extAuthzServiceVisible=false">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import VirtualHost from '@/components/VirtualHost.vue'
+import Vue from "vue"
+import VueChimera from "vue-chimera"
+Vue.use(VueChimera, {
+  baseURL: "http://10.99.6.127:8080/api/v1"
+  // Chimera default options
+})
+export default {
+  name: 'FilterChain',
+  props: {
+    data: Object,
+    index: Number,
+    nodeid: String
+  },
+  components: {
+    VirtualHost
+  },
+  data () {
+    return {
+      upgradeVisible: false,
+      upgradeForm: {
+        protocol: ""
+      },
+      headersCountLimitVisible: false,
+      headersCountLimitForm: {
+        enabled: false,
+        headersCountLimit: 100,
+        maxStreamDuration: 0
+      },
+      headersLimitVisible: false,
+      headersLimitForm: {
+        enabled: false,
+        headersLimit: 60
+      },
+      extAuthzServiceVisible: false,
+      extAuthzServiceForm: {
+        failureModeAllow: true
+      },
+      globalRateLimitServiceVisible: false,
+      globalRateLimitServiceForm: {
+        domain: "",
+        failureModeDeny: false
+      },
+      setXffVisible: false,
+      setXffForm: {
+        useRemoteAddress: false,
+        skipXffAppend: false
+      },
+      rateLimitVisible: false,
+      filterChainMatch: false,
+        rateLimitForm: {
+          statPrefix: "",
+          maxTokens: 0,
+          tokensPerFill: 0,
+          fillInterval: 0,
+          fillIntervalUnit: "s"
+        },
+      sourceMatchVisible: false,
+      sourceMatchForm: {
+        prefix: "",
+        length: 32
+      },
+      domainMatchVisible: false,
+      domainMatchForm: {
+        domain: ""
+      },
+      tcpProxyVisible: false,
+      httpProxyStatVisible: false,
+      tcpProxyForm: {
+        statPrefix: "",
+        cluster: "",
+        hashPolicySourceIP: true
+      },
+      accessLogRequestHeadersVisible: false,
+      accessLogResponseHeadersVisible: false,
+      accessLogHeadersForm: {
+        requestHeader: "",
+        responseHeader: ""
+      },
+      addVirtualHostVisible: false,
+      addVirtualHostForm: {
+        name: ""
+      },
+      tlsProtocolVersionVisible: false,
+      tlsProtocolVersionForm: {
+        type: "",
+        tlsProtocolVersion: ""
+      },
+      tlsCipherSuitesVisible: false,
+      tlsCipherSuitesForm: {
+        suites: Array()
+      },
+      tlsAddCertificateVisible: false,
+      tlsCertificateForm: {
+        certificate: ""
+      },
+      addTrafficFilterVisible: false,
+      addTrafficFilterForm: {
+        type: ""
+      },
+      tlsValidateVisible: false,
+      tlsValidateForm: {
+        trustedCa: ""
+      }
+    }
+  },
+  chimera: {
+    configSecrets () {
+      return {
+        url: '/config/' + this.nodeid + "/secrets/",
+        auto: true,
+        method: "get",
+      }
+    }
+  },
+  computed: {
+    hasHeadersCountLimit: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxHeadersCount ) {
+          return true
+        }
+      }
+      return false
+    },
+    hasMaxStreamDurationLimit: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxStreamDuration ) {
+          return true
+        }
+      }
+      return false
+    },
+    headersCountLimit: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxHeadersCount ) {
+          return this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxHeadersCount
+        }
+      }
+      return 100
+    },
+    maxStreamDurationLimit: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxStreamDuration ) {
+          return this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxStreamDuration
+        }
+      }
+      return ""
+    },
+    hasHeadersLimit: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.maxRequestHeadersKb ){
+        return true
+      }
+      return false
+    },
+    headersLimit: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.maxRequestHeadersKb ){
+        return this.data.filters[this.data.filters.length - 1].typedConfig.maxRequestHeadersKb
+      }
+      return 60
+    },
+    hasGlobalRateLimit: function() {
+      return this.getGlobalRateLimitService()
+    },
+    hasExtAuthz: function() {
+      return this.getExtAuthzService()
+    },
+    extAuthzFailureModeAllow: function() {
+      var i = this.getExtAuthzService()
+      if ( i >= 0 ) {
+        if (this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].typedConfig.failureModeAllow != undefined) {
+          return this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].typedConfig.failureModeAllow
+        }
+      }
+      return true
+    },
+    globalRateLimitDomain: function() {
+      var i = this.getGlobalRateLimitService()
+      if ( i >= 0 ) {
+        return this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].typedConfig.domain
+      }
+      return ""
+    },
+    globalRateLimitFailureModeDeny: function() {
+      var i = this.getGlobalRateLimitService()
+      if ( i >= 0 ) {
+        if (!this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].typedConfig.failureModeDeny) {
+          return false
+        }
+        return this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].typedConfig.failureModeDeny
+      }
+      return false
+    },
+    isUseRemoteAddress: function () {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.useRemoteAddress ){
+        return this.data.filters[this.data.filters.length - 1].typedConfig.useRemoteAddress
+      }
+      return false
+    },
+    isSkipXffAppend: function () {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.skipXffAppend ){
+        return this.data.filters[this.data.filters.length - 1].typedConfig.skipXffAppend
+      }
+      return false
+    },
+    statPrefix: function () {
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.tcp_proxy" || this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.http_connection_manager" ) {
+        return this.data.filters[this.data.filters.length - 1].typedConfig.statPrefix
+      }
+      return ""
+    },
+    tcpProxyCluster: function () {
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.tcp_proxy" ) {
+        return this.data.filters[this.data.filters.length - 1].typedConfig.cluster
+      }
+      return ""
+    },
+    tlsMinimumProtocolVersion: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsParams ) {
+        if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsParams.tlsMinimumProtocolVersion ) {
+          return this.data.transportSocket.typedConfig.commonTlsContext.tlsParams.tlsMinimumProtocolVersion
+        }
+      }
+      return ""
+    },
+    tlsMaximumProtocolVersion: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsParams ) {
+        if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsParams.tlsMaximumProtocolVersion ) {
+          return this.data.transportSocket.typedConfig.commonTlsContext.tlsParams.tlsMaximumProtocolVersion
+        }
+      }
+      return ""
+    },
+    tlsValidateUser: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.requestClientCertificate ) {
+        return true
+      }
+      return false
+    },
+    hasTlsValidationContext: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.validationContext ) {
+        return true
+      }
+      return false
+    },
+    hasTlsCertificates: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsCertificates ) {
+        return true
+      }
+      return false
+    },
+    hasSdsConfig: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsCertificateSdsSecretConfigs ){
+        return true
+      }
+      return false
+    },
+    hasTlsCiphers: function () {
+      if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsParams ) {
+        if ( this.data.transportSocket.typedConfig.commonTlsContext.tlsParams.cipherSuites ) {
+          return true
+        }
+      }
+      return false
+    },
+    hasTransportSocket: function () {
+      if ( this.data.transportSocket ) {
+        return true
+      }
+      return false
+    },
+    hasTcpProxy: function () {
+      if ( !this.data.filters ) {
+        return false
+      }
+      if ( this.data.filters.length == 0 ){
+        return false;
+      }
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.tcp_proxy" ){
+        return true
+      }
+      return false
+    },
+    hasTcpHashPolicy: function() {
+      if ( !this.data.filters ) {
+        return false
+      }
+      if ( this.data.filters.length == 0 ){
+        return false;
+      }
+      if ( this.data.filters[this.data.filters.length - 1].name != "envoy.filters.network.tcp_proxy" ){
+        return false
+      }
+      if ( !this.data.filters[this.data.filters.length - 1].typedConfig.hashPolicy ){
+        return false
+      }
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.hashPolicy.length == 0 ){
+        return false
+      }
+      if (this.data.filters[this.data.filters.length - 1].typedConfig.hashPolicy[0].sourceIp){
+        return true
+      }
+
+      return false
+
+
+
+    },
+    hasLogging: function () {
+        if ( !this.data.filters ) {
+          return false
+        }
+      if ( this.data.filters.length == 0 ) {
+        return false
+      }
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.tcp_proxy" || this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.http_connection_manager" ) {
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.accessLog ) {
+            return true
+        }
+      }
+      return false
+    },
+    hasHttpProxy: function () {
+      if ( !this.data.filters ) {
+        return false
+      }
+      if ( this.data.filters.length == 0 ){
+        return false;
+      }
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.http_connection_manager" ){
+        return true
+      }
+      return false
+    },
+    hasAccessLog: function () {
+      if ( !this.data.filters ) {
+        return false
+      }
+      if ( this.data.filters.length == 0 ){
+        return false;
+      }
+      if ( this.data.filters[this.data.filters.length - 1 ].accessLog ){
+        return true
+      }
+      return false
+    },
+    hasUpgrade: function () {
+        if ( !this.data.filters ) {
+          return false
+        }
+      if ( this.data.filters.length == 0 ) {
+        return false
+      }
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.http_connection_manager" ) {
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.upgradeConfigs ) {
+            return true
+        }
+      }
+      return false
+    },
+    filterChainMatchExist: function () {
+      if ( this.data.filterChainMatch ) {
+        return true
+      } else {
+        return false
+      }
+    },
+    filterChainMatchSource: function () {
+      if ( this.data.filterChainMatch ) {
+        if ( this.data.filterChainMatch.sourcePrefixRanges ){
+          return true;
+        } else {
+          return false;
+        }
+      }
+      return false
+    },
+    filterChainMatchDomain: function () {
+      if ( this.data.filterChainMatch ) {
+        if ( this.data.filterChainMatch.serverNames ){
+          return true;
+        } else {
+          return false;
+        }
+      }
+      return false
+    },
+    hasRateLimit: function () {
+      if ( this.data.filters.length == 0 ) {
+        return false;
+      }
+      if ( this.data.filters[0].name == "envoy.filters.network.local_ratelimit" ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    maxTokens: function () {
+      if ( this.data.filters.length == 0 ){
+        return 0;
+      }
+      if ( this.data.filters[0].name != "envoy.filters.network.local_ratelimit" ) {
+        return 0;
+      } else {
+        return this.data.filters[0].typedConfig.tokenBucket.maxTokens
+      }
+    },
+    tokensPerFill: function () {
+      if ( this.data.filters.length == 0 ){
+        return 0;
+      }
+      if ( this.data.filters[0].name != "envoy.filters.network.local_ratelimit" ) {
+        return 0;
+      } else {
+        return this.data.filters[0].typedConfig.tokenBucket.tokensPerFill
+      }
+    },
+    fillInterval: function () {
+      if ( this.data.filters.length == 0 ){
+        return 0;
+      }
+      if ( this.data.filters[0].name != "envoy.filters.network.local_ratelimit" ) {
+        return 0;
+      } else {
+        return this.data.filters[0].typedConfig.tokenBucket.fillInterval
+      }
+    },
+    nameRateLimit: function () {
+      if ( this.data.filters.length == 0 ){
+        return 0;
+      }
+      if ( this.data.filters[0].name != "envoy.filters.network.local_ratelimit" ) {
+        return 0;
+      } else {
+        return this.data.filters[0].typedConfig.statPrefix
+      }
+    }
+  },
+  methods: {
+    getGlobalRateLimitService: function() {
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.http_connection_manager" ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters ){
+          for (var i = 0; i < this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters.length; i++){
+            if ( this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].name == "envoy.filters.http.ratelimit" ){
+              return i
+            }
+          }
+        }
+      }
+      return -1
+    },
+    getExtAuthzService: function() {
+      if ( this.data.filters[this.data.filters.length - 1].name == "envoy.filters.network.http_connection_manager" ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters ){
+          for (var i = 0; i < this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters.length; i++){
+            if ( this.data.filters[this.data.filters.length - 1].typedConfig.httpFilters[i].name == "envoy.filters.http.ext_authz" ){
+              return i
+            }
+          }
+        }
+      }
+      return -1
+    },
+    vhAddRLDescriptor: function(vhi,form) {
+      this.$emit("addRLDescriptor", this.index, vhi, form)
+    },
+    vhDelRLDescriptor: function(vhi,rli) {
+      this.$emit("delRLDescriptor", this.index, vhi, rli)
+    },
+    vhAddConsistentHash: function ( form, ri, vhi ) {
+      this.$emit("addConsistentHash", form, ri, vhi, this.index )
+    },
+    vhDelConsistentHash: function ( chi, ri, vhi ) {
+      this.$emit("delConsistentHash", chi, ri, vhi, this.index )
+    },
+    vhUpConsistentHash: function ( chi, ri, vhi ) {
+      this.$emit("upConsistentHash", chi, ri, vhi, this.index)
+    },
+    vhDownConsistentHash: function ( chi, ri, vhi ) {
+      this.$emit("downConsistentHash", chi, ri, vhi, this.index)
+    },
+    vhAddDom: function( vhIndex, dm ) {
+      this.$emit( "addVHDomMatch", this.index, vhIndex, dm )
+    },
+    vhDelDom: function( vhIndex, dIndex ) {
+      this.$emit( "delVHDomMatch", this.index, vhIndex, dIndex )
+    },
+    vhAddRoute: function( vhIndex, route ) {
+      this.$emit( "addVHRoute", this.index, vhIndex, route )
+    },
+    vhDelRoute: function(vhIndex,rIndex) {
+      this.$emit("delVHRoute", this.index, vhIndex,rIndex)
+    },
+    vhUpRoute: function(vhIndex, rIndex) {
+      this.$emit("upVHRoute", this.index, vhIndex, rIndex)
+    },
+    vhDownRoute: function(vhIndex, rIndex) {
+      this.$emit("downVHRoute", this.index, vhIndex, rIndex)
+    },
+    enableAccessLog: function () {
+      this.$emit("enableAccessLog", this.index)
+    },
+    disableAccessLog: function () {
+      this.$emit("disableAccessLog", this.index)
+    },
+    enableUpgrade: function () {
+      this.$emit("enableUpgrade", this.index)
+    },
+    disableUpgrade: function () {
+      this.$emit("disableUpgrade", this.index)
+    },
+    removeTrafficFilter: function (){
+      this.$emit("removeTrafficFilter",this.index)
+    },
+    filterChainMatchChange: function ( check ){
+      if ( check ) {
+        this.$emit("addFilterMatch", this.index)
+      } else {
+        this.$emit("removeFilterMatch", this.index)
+      }
+    },
+    submitAddVirtualHost () {
+      this.$emit("addVH", this.index, this.addVirtualHostForm.name)
+      this.addVirtualHostVisible = false
+    },
+    submitRateLimit () {
+      var newRateLimit = new Object ()
+      newRateLimit.name = "envoy.filters.network.local_ratelimit"
+      newRateLimit.typedConfig = new Object ()
+      newRateLimit.typedConfig.statPrefix = this.rateLimitForm.statPrefix
+      newRateLimit.typedConfig.tokenBucket = new Object ()
+      newRateLimit.typedConfig.tokenBucket.maxTokens = this.rateLimitForm.maxTokens
+      newRateLimit.typedConfig.tokenBucket.tokensPerFill = this.rateLimitForm.tokensPerFill
+      newRateLimit.typedConfig.tokenBucket.fillInterval = this.rateLimitForm.fillInterval + this.rateLimitForm.fillIntervalUnit
+      if ( !this.data.filters ){
+        this.$set(this.data,"filters", Array())
+      }
+      if ( this.data.filters.length == 0 ){
+        this.data.filters.push(newRateLimit)
+        this.rateLimitVisible = false
+        return
+      }
+      if ( this.data.filters[0].name != "envoy.filters.network.local_ratelimit" ) {
+        this.data.filters.splice(0,0,newRateLimit)
+      } else {
+        this.data.filters.splice(0,1,newRateLimit)
+      }
+      this.rateLimitVisible = false
+    },
+    submitSourceMatch () {
+      var newSourceMatch = new Object ()
+      newSourceMatch.addressPrefix = this.sourceMatchForm.prefix
+      newSourceMatch.prefixLen = this.sourceMatchForm.length
+      this.$emit("addFilterMatchSource", this.index, newSourceMatch )
+      this.sourceMatchVisible = false
+    },
+    removeSourceMatch ( i ) {
+      this.$emit("removeFilterMatchSource", this.index, i )
+    },
+    removeDomainMatch ( i ) {
+      this.$emit("removeFilterMatchDomain", this.index, i )
+    },
+    removeAccessLogRequestHeader(i) {
+      this.$emit("removeAccessLogHeaders", this.index, 0, i)
+    },
+    removeAccessLogResponseHeader(i) {
+      this.$emit("removeAccessLogHeaders", this.index, 1, i)
+    },
+    submitDomainMatch () {
+      this.$emit("addFilterMatchDomain", this.index, this.domainMatchForm.domain )
+      this.domainMatchVisible = false
+    },
+    submitTcpProxy () {
+      this.$emit("setTcpProxy", this.index, this.tcpProxyForm)
+      this.tcpProxyVisible = false
+    },
+    submitHttpProxyStat () {
+      this.$emit("setTcpProxy", this.index, this.tcpProxyForm)
+      this.httpProxyStatVisible = false
+    },
+    submitAccessLogHeaders () {
+      this.$emit("accessLogHeaders", this.index, this.accessLogHeadersForm)
+      this.accessLogRequestHeadersVisible = false
+      this.accessLogResponseHeadersVisible = false
+    },
+    submitUpgrade () {
+      this.$emit("addUpgrade", this.index, this.upgradeForm)
+      this.upgradeVisible = false
+    },
+    removeUpgrade (i) {
+      this.$emit("removeUpgrade", this.index, i)
+    },
+    delTlsMinimumProtocolVersion () {
+      this.$emit("delTlsProtocolVersion",this.index,"tlsMinimumProtocolVersion")
+    }
+  },
+  mounted () {
+    if ( this.data.filterChainMatch ) {
+      this.filterChainMatch = true;
+    } else {
+      this.filterChainMatch = false;
+    }
+  }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+h3 {
+  margin: 40px 0 0;
+}
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+li {
+  display: inline-block;
+  margin: 0 10px;
+}
+a {
+  color: #42b983;
+}
+</style>

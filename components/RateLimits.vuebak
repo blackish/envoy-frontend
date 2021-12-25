@@ -1,0 +1,146 @@
+<template>
+  <div class="hello">
+    <el-table :data="configRatelimits.data.ratelimits">
+      <el-table-column prop="domain" label="domain"/>
+      <el-table-column prop="key" label="key"/>
+      <el-table-column prop="value" label="value"/>
+      <el-table-column prop="limit" label="limit"/>
+      <el-table-column prop="unit" label="unit"/>
+      <el-table-column prop="stripDomain" label="strip domain"/>
+      <el-table-column label="">
+        <template slot-scope="scope">
+        <span @click="deleteRateLimitForm.domain = scope.row.domain;deleteRateLimitForm.key = scope.row.key;deleteRateLimitForm.value = scope.row.value;$chimera.deleteRatelimits.reload()">
+        <el-button type="danger">delete</el-button>
+        </span>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-button type="success" @click="addRateLimitVisible=true">Add RateLimit</el-button>
+    <el-dialog title="Add RateLimit" :visible.sync="addRateLimitVisible">
+      <el-form ref="addRateLimitForm">
+        <el-form-item label="Domain">
+          <el-input v-model="addRateLimitForm.domain" placeholder="envoy"></el-input>
+        </el-form-item>
+        <el-form-item label="Key">
+          <el-input v-model="addRateLimitForm.key" placeholder="envoy"></el-input>
+        </el-form-item>
+        <el-form-item label="Value">
+          <el-input v-model="addRateLimitForm.value" placeholder="value"></el-input>
+        </el-form-item>
+        <el-form-item label="Limit per unit">
+          <el-input v-model.number="addRateLimitForm.limit" placeholder="0" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Unit">
+          <el-select v-model="addRateLimitForm.unit" placeholder="select" :default-first-option="true">
+            <el-option label="second" value="second"></el-option>
+            <el-option label="minute" value="minute"></el-option>
+            <el-option label="hour" value="hour"></el-option>
+            <el-option label="day" value="day"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Strip Domain">
+          <el-checkbox v-model="addRateLimitForm.stripDomain"/>
+        </el-form-item>
+        <el-button type="primary" @click="addRateLimitSubmit">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import Vue from "vue"
+import VueChimera from "vue-chimera"
+Vue.use(VueChimera, {
+  baseURL: "http://10.99.6.127:8080/api/v1"
+  // Chimera default options
+})
+export default {
+  name: 'RateLimits',
+  props: {
+    msg: String
+  },
+  data() {
+    return {
+      addRateLimitVisible: false,
+      addRateLimitForm: {
+        domain: "",
+        key: "",
+        value: "",
+        limit: 0,
+        unit: "",
+        stripDomain: false
+      },
+      deleteRateLimitForm: {
+        domain: "",
+        key: "",
+        value: ""
+      }
+    }
+  },
+  chimera: {
+    configRatelimits () {
+      return {
+        url: '/ratelimit/',
+        auto: true,
+        method: "get",
+        on: {
+          success (){
+          }
+        }
+      }
+    },
+    saveRatelimits () {
+      return {
+        url: '/ratelimit/' + this.addRateLimitForm.domain,
+        auto: false,
+        method: "put",
+        params: JSON.stringify(this.addRateLimitForm),
+        on: {
+          success (){
+            this.addRateLimitVisible = false
+            this.$chimera.configRatelimits.reload()
+          }
+        }
+      }
+    },
+    deleteRatelimits () {
+      return {
+        url: '/ratelimit/' + this.deleteRateLimitForm.domain,
+        auto: false,
+        method: "delete",
+        params: JSON.stringify(this.deleteRateLimitForm),
+        on: {
+          success (){
+            this.addRateLimitVisible = false
+            this.$chimera.configRatelimits.reload()
+          }
+        }
+      }
+    }
+  },
+  methods: {
+    addRateLimitSubmit () {
+      this.$chimera.saveRatelimits.reload()
+    }
+  }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+h3 {
+  margin: 40px 0 0;
+}
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+li {
+  display: inline-block;
+  margin: 0 10px;
+}
+a {
+  color: #42b983;
+}
+</style>

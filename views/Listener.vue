@@ -1,0 +1,590 @@
+<template>
+  <div>
+    <el-row>
+      <el-col :span="4">
+        <el-button type="success" @click="saveListenerSubmit">Save</el-button>
+      </el-col>
+      <el-col :span="20">
+        <div><h1>{{ configListener.data.listeners[0].name }}</h1></div>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <div><el-input placeholder="listener name" v-model="configListener.data.listeners[0].name"><template slot="prepend">Listener name:</template></el-input></div>
+      </el-col>
+    </el-row>
+    <el-divider></el-divider>
+    <el-row>
+      <el-col :span="16">
+        <div>
+          <el-input placeholder="bind ip" v-model="configListener.data.listeners[0].address.socketAddress.address">
+            <template slot="prepend">Address:</template>
+          </el-input>
+        </div>
+      </el-col><el-col :span="8">
+        <div>
+          <el-input placeholder="bind port" v-model="configListener.data.listeners[0].address.socketAddress.portValue" type="number">
+            <template slot="prepend">Port:</template>
+          </el-input>
+        </div>
+      </el-col>
+    </el-row>
+    <el-divider></el-divider>
+    <el-row>
+      <el-col :span="1">
+        <el-switch v-model="pCBL_disabled" @change="pCBL_changed"></el-switch>
+      </el-col>
+      <el-col :span="23">
+        <div>
+          <el-input placeholder="1048576" v-model.number="configListener.data.listeners[0].perConnectionBufferLimitBytes" v-bind:disabled="pCBL_enabled" type="number">
+            <template slot="prepend">Per connection buffer limit:</template>
+          </el-input>
+        </div>
+      </el-col>
+    </el-row>
+    <el-divider></el-divider>
+    <el-divider content-position="left">Filter chains</el-divider>
+    <div>
+      <el-button type="success" @click="addFilterChain">Add FilterChain</el-button>
+    </div>
+    <el-collapse>
+    <div v-for="(fc,i) in configListener.data.listeners[0].filterChains" v-bind:key="fc">
+      <div>
+        <el-button type="danger" @click="$delete(configListener.data.listeners[0].filterChains,i)">Delete FilterChain</el-button>
+        <el-button icon="el-icon-arrow-up" @click="upFC(i)"></el-button>
+        <el-button icon="el-icon-arrow-down" @click="downFC(i)"></el-button>
+      </div>
+      <FilterChain :data="fc" :index="i" :nodeid="nodeid" @addFilterMatch="addFilterMatch" @addFilterMatchSource="addFilterMatchSource" @addFilterMatchDomain="addFilterMatchDomain" @removeFilterMatch="removeFilterMatch" @removeFilterMatchSource="removeFilterMatchSource" @removeFilterMatchDomain="removeFilterMatchDomain" @addTrafficFilter="addTrafficFilter" @removeTrafficFilter="removeTrafficFilter" @setTcpProxy="setTcpProxy" @enableAccessLog="enableAccessLog" @disableAccessLog="disableAccessLog" @accessLogHeaders="accessLogHeaders" @removeAccessLogHeaders="removeAccessLogHeaders" @addVHDomMatch="addVHDomMatch" @delVHDomMatch="delVHDomMatch" @addVHRoute="addVHRoute" @delVHRoute="delVHRoute" @upVHRoute="upVHRoute" @downVHRoute="downVHRoute" @addVH="addVH" @delVH="delVH" @delTls="delTls" @addTls="addTls" @delTlsProtocolVersion="delTlsProtocolVersion" @setTlsProtocolVersion="setTlsProtocolVersion" @setTlsCipherSuites="setTlsCipherSuites" @delTlsCipherSuites="delTlsCipherSuites" @addTlsCertificate="addTlsCertificate" @delTlsCertificate="delTlsCertificate" @setTlsValidate="setTlsValidate" @delTlsValidate="delTlsValidate" @setXff="setXff" @addConsistentHash="addConsistentHash" @delConsistentHash="delConsistentHash" @upConsistentHash="upConsistentHash" @downConsistentHash="downConsistentHash" @setGlobalRateLimitService="setGlobalRateLimitService" @delGlobalRateLimitService="delGlobalRateLimitService" @addRLDescriptor="addRLDescriptor" @delRLDescriptor="delRLDescriptor" @upVH="upVH" @downVH="downVH" @setHeadersLimit="setHeadersLimit" @setHeadersCountLimit="setHeadersCountLimit" @setExtAuthzService="setExtAuthzService" @delExtAuthzService="delExtAuthzService" @enableUpgrade="enableUpgrade" @disableUpgrade="disableUpgrade" @addUpgrade="addUpgrade" @removeUpgrade="removeUpgrade"></FilterChain>
+    </div>
+    </el-collapse>
+  </div>
+</template>
+
+<script>
+import Vue from "vue"
+import VueChimera from "vue-chimera"
+import FilterChain from '@/components/FilterChain.vue'
+Vue.use(VueChimera, {
+  baseURL: "http://10.99.6.41:8080/api/v1"
+  // Chimera default options
+})
+export default {
+  name: 'Listener',
+  data: function () {
+    return {
+      nodeid: this.$route.params.id,
+      listenerid: this.$route.params.l_id,
+			dialogTableVisible: false,
+      pCBL_disabled: false
+    }
+  },
+  chimera: {
+    configListener () {
+      return {
+        url: '/config/' + this.nodeid + "/listeners/" + this.listenerid,
+        auto: true,
+        method: "get",
+        on: {
+          success () {
+            if ( this.configListener.data.listeners.length == 0 ){
+              this.configListener.data.listeners.push ( { name: this.listenerid, address: { socketAddress: { address: "", portValue: 0 } }, filterChains: [] } )
+            }
+            if ( this.configListener.data.listeners[0].perConnectionBufferLimitBytes === undefined ) {
+              this.pCBL_disabled = false
+            } else {
+              this.pCBL_disabled = true
+            }
+          }
+        }
+      }
+    },
+    saveListener () {
+      return {
+        url: "/config/" + this.nodeid + "/listeners/",
+        auto: false,
+        prefetch: false,
+        method: "put",
+        params: JSON.stringify(this.configListener.data.listeners[0]),
+        on: {
+          success() {
+            this.$router.push({ name: 'Node', params: { id: this.nodeid }})
+          }
+        }
+      }
+    }
+  },
+  components: {
+    FilterChain
+  },
+  computed: {
+    pCBL_enabled: function () {
+      return !this.pCBL_disabled
+    }
+  },
+  methods: {
+    pCBL_changed: function (check) {
+      if ( !check ){
+        delete this.configListener.data.listeners[0].perConnectionBufferLimitBytes
+      }
+    },
+    setHeadersCountLimit: function(index, form){
+      if( !form.enabled && this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions ){
+        if( this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions.maxHeadersCount ){
+        this.$delete(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions, 'maxHeadersCount')
+        }
+      }
+      if ( form.enabled ){
+        if ( ! this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions ) {
+          this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig,'commonHttpProtocolOptions', Object())
+        }
+        if ( form.headersCountLimit > 0 ){
+          this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions, 'maxHeadersCount', form.headersCountLimit)
+        } else {
+          this.$delete(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions, 'maxHeadersCount')
+        }
+        if ( form.maxStreamDuration > 0 ){
+          this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions, 'maxStreamDuration', form.maxStreamDuration+'s')
+        } else {
+          this.$delete(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions, 'maxStreamDuration')
+        }
+      }
+    },
+    setHeadersLimit: function(index, form){
+      if( form.enabled && this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.maxRequestHeadersKb ){
+        this.$delete(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig, 'maxRequestHeadersKb')
+      }
+      if ( form.enabled && form.headersLimit < 90 && form.headersLimit >= 60 ){
+        this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig, 'maxRequestHeadersKb', form.headersLimit)
+      }
+    },
+    setGlobalRateLimitService: function(index, form){
+      if(!this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.httpFilters){
+        this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig,"httpFilters",Array())
+      }
+      this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.httpFilters.unshift({name: "envoy.filters.http.ratelimit", typedConfig: {domain: form.domain, failureModeDeny: form.failureModeDeny}})
+      console.log(this.configListener.data.listeners[0])
+    },
+    delGlobalRateLimitService: function(index, findex){
+      this.$delete(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.httpFilters,findex)
+    },
+    setExtAuthzService: function(index, form){
+      if(!this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.httpFilters){
+        this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig,"httpFilters",Array())
+      }
+      this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.httpFilters.unshift({name: "envoy.filters.http.ext_authz", typedConfig: {failureModeAllow: form.failureModeAllow}})
+      console.log(this.configListener.data.listeners[0])
+    },
+    delExtAuthzService: function(index, findex){
+      this.$delete(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.httpFilters,findex)
+    },
+    addFilterMatch: function(index) {
+      this.$set ( this.configListener.data.listeners[0].filterChains[index], 'filterChainMatch', new Object () )
+    },
+    removeFilterMatch: function(index) {
+      this.$delete( this.configListener.data.listeners[0].filterChains[index], 'filterChainMatch' )
+    },
+    addFilterMatchSource: function(index,sourceMatch) {
+      if ( !this.configListener.data.listeners[0].filterChains[index].filterChainMatch.sourcePrefixRanges ) {
+        this.$set ( this.configListener.data.listeners[0].filterChains[index].filterChainMatch, 'sourcePrefixRanges', new Array(0) )
+      }
+      this.configListener.data.listeners[0].filterChains[index].filterChainMatch.sourcePrefixRanges.push ( sourceMatch )
+    },
+    removeFilterMatchSource: function(i,s) {
+      this.$delete ( this.configListener.data.listeners[0].filterChains[i].filterChainMatch.sourcePrefixRanges,s )
+      if ( this.configListener.data.listeners[0].filterChains[i].filterChainMatch.sourcePrefixRanges.length == 0 ) {
+        this.$delete ( this.configListener.data.listeners[0].filterChains[i].filterChainMatch, 'sourcePrefixRanges' )
+      }
+    },
+    addFilterMatchDomain: function(index,domainMatch) {
+      if ( !this.configListener.data.listeners[0].filterChains[index].filterChainMatch.serverNames ) {
+        this.$set ( this.configListener.data.listeners[0].filterChains[index].filterChainMatch, 'serverNames', new Array(0) )
+      }
+      this.configListener.data.listeners[0].filterChains[index].filterChainMatch.serverNames.push ( domainMatch )
+    },
+    removeFilterMatchDomain: function(i,s) {
+      this.$delete ( this.configListener.data.listeners[0].filterChains[i].filterChainMatch.serverNames,s )
+      if ( this.configListener.data.listeners[0].filterChains[i].filterChainMatch.serverNames.length == 0 ) {
+        this.$delete ( this.configListener.data.listeners[0].filterChains[i].filterChainMatch, 'serverNames' )
+      }
+    },
+    addTrafficFilter: function(i,t){
+      var newTrafficFilter
+      if ( t == "TcpProxy" ){
+        newTrafficFilter = { name: "envoy.filters.network.tcp_proxy", typedConfig: {} }
+      } else if ( t == "HttpProxy" ) {
+        newTrafficFilter = { name: "envoy.filters.network.http_connection_manager", typedConfig: { routeConfig: { virtualHosts: Array(), httpFilters: [ { name: "envoy.filters.http.router" } ] } } }
+      }
+      this.configListener.data.listeners[0].filterChains[i].filters.push(newTrafficFilter)
+    },
+    removeTrafficFilter: function(i) {
+      this.configListener.data.listeners[0].filterChains[i].filters.splice(-1,1)
+    },
+    setTcpProxy: function(i,s) {
+      this.$set(this.configListener.data.listeners[0].filterChains[i].filters[ this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig,"statPrefix",s.statPrefix)
+      if ( this.configListener.data.listeners[0].filterChains[i].filters[ this.configListener.data.listeners[0].filterChains[i].filters.length - 1].name == "envoy.filters.network.tcp_proxy" ) {
+        this.$set(this.configListener.data.listeners[0].filterChains[i].filters[ this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig,"cluster", s.cluster)
+        if ( s.hashPolicySourceIP ) {
+          this.$set(this.configListener.data.listeners[0].filterChains[i].filters[ this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig,"hashPolicy", Array())
+          this.configListener.data.listeners[0].filterChains[i].filters[ this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.hashPolicy.push({sourceIp: {}})
+        }
+      }
+    },
+    enableAccessLog: function(i) {
+      this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig,"accessLog",Array(0))
+      this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog.push ( { name: "remoteAccessLog", typedConfig: { additionalResponseHeadersToLog: [], additionalRequestHeadersToLog: [] } } )
+    },
+    disableAccessLog: function(i) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig,"accessLog")
+    },
+    accessLogHeaders: function(i,accessLogHeaders) {
+      if ( accessLogHeaders.requestHeader.length > 0 ) {
+        if ( !this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalRequestHeadersToLog) {
+          this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig, "additionalRequestHeadersToLog", Array())
+        }
+        this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalRequestHeadersToLog.push(accessLogHeaders.requestHeader)
+      }
+      if ( accessLogHeaders.responseHeader.length > 0 ) {
+        if ( !this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalResponseHeadersToLog) {
+          this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig, "additionalResponseHeadersToLog", Array())
+        }
+        this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalResponseHeadersToLog.push(accessLogHeaders.responseHeader)
+      }
+    },
+    removeAccessLogHeaders: function(i, t, hi) {
+      if ( t == 0 ) {
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalRequestHeadersToLog, hi)
+      }
+      if ( t == 1 ) {
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalResponseHeadersToLog, hi)
+      }
+    },
+    enableUpgrade: function(i) {
+      this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig,"upgradeConfigs",Array(0))
+    },
+    disableUpgrade: function(i) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.upgradeConfigs)
+    },
+    addUpgrade: function(i,f) {
+      this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.upgradeConfigs.push({upgradeType: f.protocol})
+    },
+    removeUpgrade: function(i,j) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.upgradeConfigs,j)
+    },
+    addVHDomMatch: function (i, vhi, dom) {
+      if ( !this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi].domains ) {
+        this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi],"domains",Array())
+      }
+      this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi].domains.push( dom )
+    },
+    delVHDomMatch: function(i, vhi, di) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi].domains, di)
+    },
+    addVHRoute: function ( i, vhi, r ){
+      if ( !this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi].routes ) {
+        this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi],"routes",Array())
+      }
+      var newRoute
+      newRoute = new Object ()
+      newRoute.name = r.name
+      if ( r.matchType == "regex" ) {
+        newRoute.match = { safeRegex: { regex: r.matchValue } }
+      } else if ( r.matchType == "prefix" ) {
+        newRoute.match = { prefix: r.matchValue }
+      } else if ( r.matchType == "path" ) {
+        newRoute.match = { path: r.matchValue }
+      }
+      if ( r.matchHeader ) {
+        this.$set(newRoute.match,"headers", Array())
+        for ( var ind = 0; ind < r.headers.length; ind++ ) {
+          if ( r.headers[ind].type == "exactMatch" ){
+            newRoute.match.headers.push({name: r.headers[ind].name, exactMatch: r.headers[ind].value})
+          } else if ( r.headers[ind].type == "safeRegexMatch" ){
+            newRoute.match.headers.push({name: r.headers[ind].name, safeRegexMatch: { regex: r.headers[ind].value}})
+          } else {
+            newRoute.match.headers.push({name: r.headers[ind].name})
+          }
+        }
+      }
+      if ( r.actionType == "route" ) {
+        newRoute.route = { cluster: r.cluster }
+        if ( r.timeout ) {
+          newRoute.route.timeout = r.timeoutValue + "s"
+        }
+        if ( r.actionRewriteType == "hostRewrite" ) {
+          newRoute.route.hostRewriteLiteral = r.actionRewriteValue
+        } else if ( r.actionRewriteType == "prefixRewrite" ) {
+          newRoute.route.prefixRewrite = r.actionRewriteValue
+        } else if ( r.actionRewriteType == "regexRewrite" ) {
+          newRoute.route.regexRewrite = { safeRegex: { regex: r.actionRewriteValue },substitution: r.actionRewriteSubstitution }
+        }
+      } else if ( r.actionType == "redirect" ) {
+        if ( r.actionRedirectType == "httpsRedirect" ) {
+          newRoute.redirect = { httpsRedirect: true }
+        } else if ( r.actionRedirectType == "hostRedirect" ) {
+          newRoute.redirect = { hostRedirect: r.actionRedirectValue }
+        } else if ( r.actionRedirectType == "pathRedirect" ) {
+          newRoute.redirect = { pathRedirect: r.actionRedirectValue }
+        } else if ( r.actionRedirectType == "prefixRewrite" ) {
+          newRoute.redirect = { prefixRewrite: r.actionRedirectValue } 
+        }
+      }
+      this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi].routes.push ( newRoute )
+    },
+    delVHRoute: function ( i, vhi, ri ) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts[vhi].routes, ri)
+    },
+    delVH: function (i, vhi) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts, vhi)
+    },
+    addVH: function(i,n) {
+      var newVH
+      newVH = new Object ()
+      newVH.name = n
+      newVH.routes = new Array ()
+      this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length - 1].typedConfig.routeConfig.virtualHosts.push( newVH)
+    },
+    delTls: function(i) {
+      this.$delete(this.configListener.data.listeners[0].filterChains[i],"transportSocket")
+      this.$delete(this.configListener.data.listeners[0],"listenerFilters")
+    },
+    addTls: function(i) {
+      var newTls
+      newTls = new Object ()
+      newTls.name = "envoy.transport_sockets.tls"
+      newTls.typedConfig = { commonTlsContext: {} }
+      this.$set(this.configListener.data.listeners[0].filterChains[i],"transportSocket",newTls)
+      this.$set(this.configListener.data.listeners[0],"listenerFilters",Array())
+      this.configListener.data.listeners[0].listenerFilters.push ( {name: "envoy.filters.listener.tls_inspector"})
+    },
+    delTlsProtocolVersion: function(i,form){
+      if ( form == "tlsMinimumProtocolVersion" ) {
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams,"tlsMinimumProtocolVersion")
+      }
+      if ( form == "tlsMaximumProtocolVersion" ) {
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams,"tlsMaximumProtocolVersion")
+      }
+      if ( !this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams.tlsMaximumProtocolVersion && !this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams.tlsMinimumProtocolVersion){
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"tlsParams")
+      }
+    },
+    setTlsProtocolVersion: function(i,form){
+      if ( !this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams){
+        this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"tlsParams",Object())
+      }
+      if ( form.type == "tlsMinimumProtocolVersion" ){
+        this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams,"tlsMinimumProtocolVersion",form.tlsProtocolVersion)
+      }
+      if ( form.type == "tlsMaximumProtocolVersion" ){
+        this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams,"tlsMaximumProtocolVersion",form.tlsProtocolVersion)
+      }
+    },
+    setTlsCipherSuites: function(i,suites){
+      if ( !this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams){
+        this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"tlsParams",Object())
+      }
+      this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams,"cipherSuites",suites.suites)
+    },
+    delTlsCipherSuites: function(i,si){
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams.cipherSuites,si)
+      if (this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams.cipherSuites.length == 0){
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsParams,"cipherSuites")
+      }
+    },
+    addTlsCertificate: function(i,c){
+      if(!this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsCertificateSdsSecretConfigs){
+        this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"tlsCertificateSdsSecretConfigs",Array())
+      }
+      var newCert
+      newCert = { name: c.certificate }
+      this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsCertificateSdsSecretConfigs.push ( newCert )
+    },
+    delTlsCertificate: function(i,c){
+      this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.tlsCertificateSdsSecretConfigs,c)
+    },
+    delTlsValidate: function(i){
+      if ( this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.validationContext ) {
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"validationContext")
+      }
+      if ( this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext.requestClientCertificate ) {
+        this.$delete(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"requestClientCertificate")
+      }
+    },
+    setTlsValidate: function(i,c){
+      var context
+      context = { validationContextSdsSecretConfig: { name: c.trustedCa } }
+      this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"validationContext",context)
+      this.$set(this.configListener.data.listeners[0].filterChains[i].transportSocket.typedConfig.commonTlsContext,"requestClientCertificate",c.validateClient)
+    },
+    setXff: function(i,f){
+      this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length-1].typedConfig,"useRemoteAddress", f.useRemoteAddress)
+      this.$set(this.configListener.data.listeners[0].filterChains[i].filters[this.configListener.data.listeners[0].filterChains[i].filters.length-1].typedConfig,"skipXffAppend", f.skipXffAppend)
+    },
+    saveListenerSubmit: function() {
+      this.$chimera.saveListener.fetch()
+      this.configListener.data.listeners[0].address.socketAddress.portValue = parseInt(this.configListener.data.listeners[0].address.socketAddress.portValue)
+      console.log(this.$chimera.saveListener)
+      return true
+    },
+    addFilterChain: function() {
+      if ( !this.configListener.data.listeners[0].filterChains){
+        this.$set(this.configListener.data.listeners[0],"filterChains",Array())
+      }
+      this.configListener.data.listeners[0].filterChains.push({filters:[]})
+    },
+    addConsistentHash: function(form,ri,vhi,fci){
+      var hash = Object()
+      console.log(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].routes[ri])
+      if (!this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy){
+        this.$set(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route,"hashPolicy",Array())
+      }
+      this.$set(hash,"terminal", form.terminal)
+      if (form.hashType == 'cookie') {
+        this.$set(hash,"cookie",{name: form.name, ttl: form.cookieTtl + form.cookieTtlUnit})
+      }
+      if (form.hashType == 'header') {
+        this.$set(hash,"header", {headerName: form.name})
+        if(form.useRegex) {
+          this.$set(hash.header,"regexRewrite",{pattern: {regex: form.pattern}, substitution: form.substitution})
+        }
+      }
+      if (form.hashType == 'connectionProperties' && form.useSourceIp == true){
+        this.$set(hash,"connectionProperties", { sourceIp: true })
+      }
+      if (form.hashType == 'queryParameter'){
+        this.$set(hash,"queryParameter",{name: form.name})
+      }
+      this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy.push(hash)
+      console.log(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy)
+    },
+    delConsistentHash: function(chi,ri,vhi,fci){
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy,chi)
+    },
+    addRLDescriptor: function(fci,vhi,form) {
+      var rld = Object()
+      if (!this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].rateLimits) {
+        this.$set(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi],"rateLimits", Array())
+        this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].rateLimits.push({actions: Array()})
+      }
+      if (form.type == 'requestHeaders') {
+        this.$set(rld,"requestHeaders", { headerName: form.headerName, descriptorKey: form.descriptorKey, skipIfAbsent: form.skipIfAbsent })
+      }
+      if ( form.type == 'genericKey' ){
+        this.$set(rld,"genericKey", { descriptorKey: form.descriptorKey, descriptorValue: form.descriptorValue })
+      }
+      this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].rateLimits[0].actions.push(rld)
+      console.log(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi])
+    },
+    delRLDescriptor: function(fci,vhi,rli){
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].rateLimits[0].actions,rli)
+      if (this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi].rateLimits[0].actions.length == 0){
+        this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[this.configListener.data.listeners[0].filterChains[fci].filters.length-1].typedConfig.routeConfig.virtualHosts[vhi],"rateLimits")
+      }
+    },
+    upFC: function(i) {
+      if (i == 0) {
+        return
+      }
+      var temp = this.configListener.data.listeners[0].filterChains[i-1]
+      this.$delete(this.configListener.data.listeners[0].filterChains,i-1)
+      this.configListener.data.listeners[0].filterChains.splice(i,0,temp)
+    },
+    downFC: function(i) {
+      if (i == (this.configListener.data.listeners[0].filterChains.length - 1)) {
+        return
+      }
+      var temp = this.configListener.data.listeners[0].filterChains[i+1]
+      this.$delete(this.configListener.data.listeners[0].filterChains,i+1)
+      this.configListener.data.listeners[0].filterChains.splice(i,0,temp)
+    },
+    upVH: function(fci,vhi){
+      if (vhi == 0) {
+        return
+      }
+      var fi = this.configListener.data.listeners[0].filterChains[fci].filters.length - 1
+      var temp = this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi-1]
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts,vhi-1)
+      this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts.splice(vhi,0,temp)
+    },
+    downVH: function(fci,vhi){
+      var fi = this.configListener.data.listeners[0].filterChains[fci].filters.length - 1
+      if (vhi == (this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts.length - 1)) {
+        return
+      }
+      var temp = this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi+1]
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts,vhi+1)
+      this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts.splice(vhi,0,temp)
+    },
+    upVHRoute: function(fci,vhi,ri){
+      if (ri == 0) {
+        return
+      }
+      var fi = this.configListener.data.listeners[0].filterChains[fci].filters.length - 1
+      var temp = this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri-1]
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes,ri-1)
+      this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes.splice(ri,0,temp)
+    },
+    downVHRoute: function(fci,vhi,ri){
+      var fi = this.configListener.data.listeners[0].filterChains[fci].filters.length - 1
+      if (ri == (this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes.length - 1)) {
+        return
+      }
+      var temp = this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri+1]
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes,ri+1)
+      this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes.splice(ri,0,temp)
+    },
+    upConsistentHash: function(chi,ri,vhi,fci){
+      if (chi == 0) {
+        return
+      }
+      var fi = this.configListener.data.listeners[0].filterChains[fci].filters.length - 1
+      var temp = this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy[chi-1]
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy,chi-1)
+      this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy.splice(chi,0,temp)
+    },
+    downConsistentHash: function(chi,ri,vhi,fci){
+      var fi = this.configListener.data.listeners[0].filterChains[fci].filters.length - 1
+      if (ri == (this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy.length - 1)) {
+        return
+      }
+      var temp = this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy[chi+1]
+      this.$delete(this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy,chi+1)
+      this.configListener.data.listeners[0].filterChains[fci].filters[fi].typedConfig.routeConfig.virtualHosts[vhi].routes[ri].route.hashPolicy.splice(chi,0,temp)
+    }
+  },
+  mounted () {
+  }
+}
+</script>
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+h3 {
+  margin: 40px 0 0;
+}
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+li {
+  display: inline-block;
+  margin: 0 10px;
+}
+a {
+  color: #42b983;
+}
+</style>
+<style>
+  .custom-tree-node {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      padding-right: 8px;
+  }
+  .el-row {
+    margin-bottom: 20px;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+</style>

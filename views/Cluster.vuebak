@@ -1,0 +1,1021 @@
+<template>
+  <div>
+    <el-row>
+      <el-col :span="4">
+        <el-button type="success" @click="submitSave">Save</el-button>
+      </el-col>
+      <el-col :span="20">
+        <div><h1>{{ configCluster.data.clusters[0].name }}</h1></div>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-input :value="configCluster.data.clusters[0].connectTimeout">
+          <template slot="prepend">Connection timeout</template>
+          <template slot="append"><el-button icon="el-icon-edit" @click="connectionTimeoutVisible=true"></el-button></template>
+        </el-input>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-input :value="perConnectionBufferLimitBytes" :disabled="!perConnectionBufferLimitBytesDisabled">
+          <template slot="prepend">Per connection buffer limit (bytes)</template>
+          <template slot="append"><el-button icon="el-icon-edit" @click="perConnectionBufferLimitBytesVisible=true"></el-button></template>
+        </el-input>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-input v-bind:value="headersCountLimit" v-bind:disabled="!hasHeadersCountLimit"><template slot="prepend">Header Count Limit:</template><template slot="append"><el-button icon="el-icon-edit" @click="headersCountLimitVisible=true"></el-button></template></el-input>
+      </el-col>
+      <el-col :span="24">
+        <el-input v-bind:value="maxStreamDurationLimit" v-bind:disabled="!maxStreamDurationLimit"><template slot="prepend">Stream duration:</template><template slot="append"><el-button icon="el-icon-edit" @click="headersCountLimitVisible=true"></el-button></template></el-input>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>HTTP Protocol options</span><el-button style="float: right; padding: 3px 0" type="text" @click="httpProtocolOptionsVisible = true">Change</el-button>
+          </div>
+          <div v-if="hasCommonProtocolHaxHeadersCount">
+            <el-input :value="configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions.maxHeadersCount"><template slot="prepend">Max Headers Count</template></el-input>
+          </div>
+          <div v-if="hasCommonProtocolMaxStreamDuration">
+            <el-input :value="configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions.maxStreamDuration"><template slot="prepend">Max stream duration</template></el-input>
+          </div>
+          <div v-if="hasCommonProtocolUseDownstream">
+            <el-input value="Use downstream protocol" disable="true"><template slot="prepend">Upstream protocol version</template></el-input>
+          </div>
+          <div v-if="hasCommonProtocolUseExplicit">
+            <el-input :value="commonProtocolExplicitVersion" disable="true"><template slot="prepend">Upstream protocol version</template></el-input>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>LB Policy</span><el-button style="float: right; padding: 3px 0" type="text" @click="lbPolicyVisible = true">Change</el-button>
+          </div>
+          <div>
+            <el-input :value="lbPolicy"><template slot="prepend">LB Policy</template></el-input>
+          </div>
+          <div v-if="hasLeastRequestLbConfig">
+            <el-input :value="configCluster.data.clusters[0].leastRequestLbConfig.choiceCount"><template slot="prepend">Least request choice count</template></el-input>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>Common policy</span><el-button style="float: right; padding: 3px 0" type="text" @click="commonPolicyVisible = true">Set</el-button>
+          </div>
+          <div>
+            <el-input :value="panicThreshold"><template slot="prepend">Healthy panic threshold percent</template></el-input>
+          </div>
+          <div v-if="hasWeightedBalance">
+            <el-input value="Weighted load balance"><template slot="prepend">Load balance type"</template></el-input>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>Requests per connection</span><el-button style="float: right; padding: 3px 0" type="text" @click="requestsPerConnectionVisible = true">Set</el-button>
+          </div>
+          <div>
+            <el-input :value="requestsPerConnection" :visible="hasRequestsPerConnection"><template slot="prepend">Requests per Connection</template></el-input>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>Health check</span><el-button style="float: left; padding: 3px 0" type="text" @click="$delete(configCluster.data.clusters[0],'healthChecks')">Clear</el-button><el-button style="float: right; padding: 3px 0" type="text" @click="healthCheckVisible=true">Set</el-button>
+          </div>
+          <div v-if="hasHealthCheck">
+            <el-input :value="configCluster.data.clusters[0].healthChecks[0].timeout"><template slot="prepend">Timeout</template></el-input>
+            <el-input :value="configCluster.data.clusters[0].healthChecks[0].interval"><template slot="prepend">Interval</template></el-input>
+            <el-input :value="configCluster.data.clusters[0].healthChecks[0].healthyThreshold"><template slot="prepend">Healthy threshold</template></el-input>
+            <el-input :value="configCluster.data.clusters[0].healthChecks[0].unhealthyThreshold"><template slot="prepend">Unhealthy threshold</template></el-input>
+            <div v-if="hasHttpHealthCheck">
+              <el-input :value="configCluster.data.clusters[0].healthChecks[0].httpHealthCheck.path"><template slot="prepend">HTTP check path</template></el-input>
+              <div v-if="hasHttpHealthCheckHost">
+                <el-input :value="configCluster.data.clusters[0].healthChecks[0].httpHealthCheck.host"><template slot="prepend">HTTP host header</template></el-input>
+              </div>
+              <div v-if="hasHttpHealthCheckExpectStatuses">
+                <el-table :data="configCluster.data.clusters[0].healthChecks[0].httpHealthCheck.expectedStatuses">
+                  <el-table-column prop="start" label="From Code"/>
+                  <el-table-column prop="end" label="To Code"/>
+                </el-table>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>Endpoint SSL</span><el-button style="float: right; padding: 3px 0" type="text" @click="editEndpointSSLVisible=true">Edit</el-button>
+          </div>
+          <div>
+            <el-switch :value="hasSSL"></el-switch>
+            <div v-if="hasSNI">
+              <el-input :value="configCluster.data.clusters[0].transportSocket.typedConfig.sni"><template slot="prepend">SNI</template></el-input>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="4">
+        <el-button type="success" @click="addEndpointVisible=true">Add</el-button>
+      </el-col>
+      <el-col :span="20">
+        <el-divider>Endpoints</el-divider>
+      </el-col>
+    </el-row>
+
+    <el-row>
+      <el-col :span="4">
+        <div>Overprovisioning factor:</div>
+      </el-col>
+      <el-col :span="20">
+        <el-input :value="endpointOverprovisioningFactor" :disabled="isendPointOverprovisioningFactorNotSet" type="number">
+          <template slot="append"><el-button icon="el-icon-edit" @click="overprovisioningFactorVisible=true"></el-button></template>
+        </el-input>
+      </el-col>
+    </el-row>
+
+    <el-row v-for="(e,ei) in configEndpoints.data.endpoints[0].endpoints" :key="e">
+      <el-col :span="4">
+        <span>Priority: {{endpointPriority(ei)}}</span>
+      </el-col>
+      <el-col :span="20">
+        <el-row v-for="(lbe,elbi) in e.lbEndpoints" :key="lbe">
+          <el-col>
+            <el-card class="box-card">
+              <div slot="header" class="clearfix">
+                <span>Endpoint</span><el-button style="float: right; padding: 3px 0" type="text" @click="deleteEndpoint(ei,elbi)">Delete</el-button>
+              </div>
+              <div>
+                <div v-if="lbe.loadBalancingWeight">
+                  <el-input :value="lbe.loadBalancingWeight"><template slot="prepend">Weight</template></el-input>
+                </div>
+                <el-input :value="lbe.endpoint.address.socketAddress.address"><template slot="prepend">Address</template></el-input>
+                <el-input :value="lbe.endpoint.address.socketAddress.portValue"><template slot="prepend">Port</template></el-input>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      <el-divider></el-divider>
+      </el-col>
+    </el-row>
+    <el-dialog title="Overprovisioning factor" :visible.sync="overprovisioningFactorVisible">
+      <el-form ref="overprovisioningFactorForm">
+        <el-form-item label="Set overprovisioning factor">
+          <el-switch v-model="overprovisioningFactorForm.enabled"></el-switch>
+        </el-form-item>
+        <el-form-item v-if="overprovisioningFactorForm.enabled" label="Overprovisioning factor">
+          <el-input v-model.number="overprovisioningFactorForm.overprovisioningFactor" type="number" placeholder="140"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitOverprovisioningFactor">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Connection timeout" :visible.sync="connectionTimeoutVisible">
+      <el-form ref="connectionTimeoutForm">
+        <el-form-item label="Connection timeout">
+          <el-input v-model.number="connectionTimeoutForm.timeout" type="number"></el-input>
+          <el-select v-model="connectionTimeoutForm.timeoutUnit">
+            <el-option value="s" label="Seconds"></el-option>
+            <el-option value="m" label="Minutes"></el-option>
+            <el-option value="h" label="Hours"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-button type="primary" @click="submitConnectionTimeout">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="LB Policy" :visible.sync="lbPolicyVisible">
+      <el-form ref="lbPolicyForm">
+        <el-form-item label="LB Policy">
+          <el-select v-model="lbPolicyForm.policy" placeholder="policy">
+            <el-option value="ROUND_ROBIN" label="Round robin"></el-option>
+            <el-option value="LEAST_REQUEST" label="Least request"></el-option>
+            <el-option value="MAGLEV" label="Maglev"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="lbPolicyForm.policy=='LEAST_REQUEST'" label="Choice count">
+          <el-input v-model.number="lbPolicyForm.choiceCount" type="number"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitLbPolicy">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Common policy" :visible.sync="commonPolicyVisible">
+      <el-form ref="commonPolicyForm">
+        <el-form-item label="Healthy panic threshold">
+          <el-input v-model.number="commonPolicyForm.panic" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Weighted load balance">
+          <el-switch v-model="commonPolicyForm.weighted"></el-switch>
+        </el-form-item>
+        <el-button type="primary" @click="submitCommonPolicy">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Health check" :visible.sync="healthCheckVisible">
+      <el-form ref="healthCheckForm">
+        <el-form-item label="Timeout">
+          <el-input v-model.number="healthCheckForm.timeout" type="number"></el-input>
+          <el-select v-model="healthCheckForm.timeoutUnit">
+            <el-option value="s" label="Seconds"></el-option>
+            <el-option value="m" label="Minutes"></el-option>
+            <el-option value="h" label="Hours"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Interval">
+          <el-input v-model.number="healthCheckForm.interval" type="number"></el-input>
+          <el-select v-model="healthCheckForm.intervalUnit">
+            <el-option value="s" label="Seconds"></el-option>
+            <el-option value="m" label="Minutes"></el-option>
+            <el-option value="h" label="Hours"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Healthy checks threshold">
+          <el-input v-model.number="healthCheckForm.healthyThreshold" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Unhealthy checks threshold">
+          <el-input v-model.number="healthCheckForm.unhealthyThreshold" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="HTTP health check">
+          <el-checkbox v-model="healthCheckForm.httpHealthCheck"></el-checkbox>
+        </el-form-item>
+        <div v-if="healthCheckForm.httpHealthCheck">
+          <el-form-item label="HTTP path">
+            <el-input v-model="healthCheckForm.httpPath"></el-input>
+          </el-form-item>
+          <el-form-item label="Host header">
+            <span><el-checkbox v-model="healthCheckForm.httpHostEnable"/><el-input v-model="healthCheckForm.httpHost" :disabled="!healthCheckForm.httpHostEnable"/></span>
+          </el-form-item>
+          <el-row v-for="(rc,rci) in healthCheckForm.expectedStatuses" :key="rc">
+            <el-col>
+              <span>Start: {{rc.start}}</span>
+            </el-col>
+            <el-col>
+              <span>End: {{rc.end}}</span>
+            </el-col>
+            <el-col><el-button icon="el-icon-delete" @click="$delete(healthCheckForm.expectedStatuses,rci)"></el-button></el-col>
+          </el-row>
+          <el-row>
+            <el-col><el-input v-model.number="healthCheckForm.startStatus" type="number"><template slot="prepend">From code</template></el-input></el-col>
+            <el-col><el-input v-model.number="healthCheckForm.endStatus" type="number"><template slot="prepend">To code</template></el-input></el-col>
+            <el-col><el-button icon="el-icon-edit" @click="healthCheckForm.expectedStatuses.push({start: healthCheckForm.startStatus, end: healthCheckForm.endStatus})"></el-button></el-col>
+          </el-row>
+        </div>
+        <el-button type="primary" @click="submitHealthCheck">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Add endpoint" :visible.sync="addEndpointVisible">
+      <el-form ref="addEndpointForm">
+        <el-form-item label="Priotiry">
+          <el-input v-model.number="addEndpointForm.priority" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Endpoint address">
+          <el-input v-model="addEndpointForm.address"></el-input>
+        </el-form-item>
+        <el-form-item label="Endpoint port">
+          <el-input v-model.number="addEndpointForm.port"></el-input>
+        </el-form-item>
+        <el-form-item label="use weight">
+          <el-switch v-model="addEndpointForm.useWeight"></el-switch>
+        </el-form-item>
+        <div v-if="addEndpointForm.useWeight">
+          <el-form-item label="weight">
+            <el-input v-model.number="addEndpointForm.weight"></el-input>
+          </el-form-item>
+        </div>
+        <el-button type="primary" @click="submitAddEndpoint">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Endpoint SSL" :visible.sync="editEndpointSSLVisible">
+      <el-form ref="editEndpointSSLForm">
+        <el-form-item label="Enable SSL">
+          <el-switch v-model="editEndpointSSLForm.enableSsl"></el-switch>
+        </el-form-item>
+        <div v-if="editEndpointSSLForm.enableSsl">
+          <el-form-item label="Enable endpoint sni">
+            <el-switch v-model="editEndpointSSLForm.enableSni"></el-switch>
+          </el-form-item>
+          <el-form-item v-if="editEndpointSSLForm.enableSni" label="SNI">
+            <el-input v-model="editEndpointSSLForm.sni"></el-input>
+          </el-form-item>
+        </div>
+        <el-button type="primary" @click="submitEditEndpointSSL">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Per connection buffer limit" :visible.sync="perConnectionBufferLimitBytesVisible">
+      <el-form ref="perConnectionBufferLimitBytesForm">
+        <el-form-item label="Enable">
+          <el-switch v-model="perConnectionBufferLimitBytesForm.enabled"></el-switch>
+        </el-form-item>
+        <el-form-item v-if="perConnectionBufferLimitBytesForm.enabled" label="Per connection buffer limit">
+          <el-input v-model.number="perConnectionBufferLimitBytesForm.perConnectionBufferLimitBytes" type="number"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitPerConnectionBufferLimitBytes">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Requests per Connection" :visible.sync="requestsPerConnectionVisible">
+      <el-form ref="requestsPerConnectionForm">
+        <el-form-item label="Enable">
+          <el-switch v-model="requestsPerConnectionForm.enabled"></el-switch>
+        </el-form-item>
+        <el-form-item v-if="requestsPerConnectionForm.enabled" label="Requests per Connection">
+          <el-input v-model.number="requestsPerConnectionForm.requests" type="number"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitRequestsPerConnection">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="Headers count limit" :visible.sync="headersCountLimitVisible">
+      <el-form ref="headersCountLimitForm">
+        <el-form-item label="Enable headers count limit">
+          <el-checkbox v-model="headersCountLimitForm.enabled"></el-checkbox>
+        </el-form-item>
+        <div v-if="headersCountLimitForm.enabled">
+          <el-form-item label="Headers count limit">
+            <el-input v-model.number="headersCountLimitForm.headersCountLimit" type="number"></el-input>
+          </el-form-item>
+          <el-form-item label="Max Stream Duration (seconds)">
+            <el-input v-model.number="headersCountLimitForm.maxStreamDuration" type="number"></el-input>
+          </el-form-item>
+        </div>
+        <el-button type="primary" @click="submitHeadersCountLimit">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+    <el-dialog title="HTTP Protocol Options" :visible.sync="httpProtocolOptionsVisible">
+      <el-form ref="httpProtocolOptionsForm">
+        <el-form-item label="Headers count limit. 0 to disable">
+          <el-input v-model.number="httpProtocolOptionsForm.headersCountLimit" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Max Stream Duration (seconds) 0 to disable">
+          <el-input v-model.number="httpProtocolOptionsForm.maxStreamDuration" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Upstream protocol">
+          <el-select v-model="httpProtocolOptionsForm.protocolUsage">
+            <el-option label="useDownstream" value="useDownstream"></el-option>
+            <el-option label="explicitProtocol" value="explicitProtocol"></el-option>
+          </el-select>
+        </el-form-item>
+        <dev v-if="httpProtocolOptionsForm.protocolUsage == 'explicitProtocol'">
+          <el-form-item label="Protocol version">
+            <el-select v-model="httpProtocolOptionsForm.protocolVersion">
+              <el-option label="HTTP1" value="HTTP1"></el-option>
+              <el-option label="HTTP1.1" value="HTTP1.1"></el-option>
+              <el-option label="HTTP2" value="HTTP2"></el-option>
+            </el-select>
+          </el-form-item>
+        </dev>
+        <el-button type="primary" @click="submitHttpProtocolOptions">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
+
+  </div>
+</template>
+
+<script>
+import Vue from "vue"
+import VueChimera from "vue-chimera"
+Vue.use(VueChimera, {
+  baseURL: "http://10.99.6.127:8080/api/v1"
+//  baseURL: "/api/v1"
+  // Chimera default options
+})
+export default {
+  name: 'Cluster',
+  data: function () {
+    return {
+      nodeid: this.$route.params.id,
+      clusterid: this.$route.params.c_id,
+      res: "",
+      httpProtocolOptionsVisible: false,
+      httpProtocolOptionsForm: {
+        headersCountLimit: 0,
+        maxStreamDuration: 0,
+        protocolUsage: "useDownstream",
+        protocolVersion: "HTTP1.1"
+      },
+      headersCountLimitVisible: false,
+      headersCountLimitForm: {
+        enabled: false,
+        headersCountLimit: 100,
+        maxStreamDuration: 0
+      },
+      requestsPerConnectionVisible: false,
+      requestsPerConnectionForm: {
+        enabled: false,
+        requests: 0
+      },
+      perConnectionBufferLimitBytesVisible: false,
+      perConnectionBufferLimitBytesForm: {
+        enabled: false,
+        perConnectionBufferLimitBytes: 0
+      },
+      overprovisioningFactorVisible: false,
+      overprovisioningFactorForm: {
+        enabled: false,
+        overprovisioningFactor: 140
+      },
+      editEndpointSSLVisible: false,
+      editEndpointSSLForm: {
+        enableSsl: false,
+        enableSni: false,
+        sni: ""
+      },
+      connectionTimeoutVisible: false,
+      connectionTimeoutForm: {
+        timeout: 0,
+        timeoutUnit: "s"
+      },
+      lbPolicyVisible: false,
+      lbPolicyForm: {
+        policy: "",
+        choiceCount: 0
+      },
+      commonPolicyVisible: false,
+      commonPolicyForm: {
+        panic: 0,
+        weighted: false
+      },
+      healthCheckVisible: false,
+      healthCheckForm: {
+        timeout: 0,
+        timeoutUnit: "s",
+        interval: 0,
+        intervalUnit: "s",
+        healthyThreshold: 0,
+        unhealthyThreshold: 0,
+        httpHealthCheck: false,
+        httpPath: "",
+        httpHostEnable: false,
+        httpHost: "",
+        startStatus: 0,
+        endStatus: 0,
+        expectedStatuses: []
+      },
+      addEndpointVisible: false,
+      addEndpointForm: {
+        priority: 0,
+        address: "",
+        port: 0,
+        useWeight: false,
+        weight: 0
+      },
+      toDelete: "",
+      priorityToDelete: 255,
+      endpointCreate: {
+        clusterName: "",
+        endpoints: [{
+          priority: 0,
+          lbEndpoints: [{
+            endpoint: {
+              address: {
+                socketAddress: {
+                  address: "",
+                  portValue: 0
+                }
+              }
+            }
+          }]
+        }]
+      }
+    }
+  },
+  chimera: {
+    configCluster () {
+      return {
+        url: '/config/' + this.nodeid + "/clusters/" + this.clusterid,
+        auto: true,
+        method: "get",
+        on: {
+          success () {
+            if ( this.configCluster.data.clusters.length == 0 ){
+              this.configCluster.data.clusters.push ( { name: this.clusterid, type: "EDS", connectTimeout: "0s" } )
+            }
+          }
+        }
+      }
+    },
+    saveCluster () {
+      return {
+        url: '/config/' + this.nodeid + "/clusters/",
+        auto: false,
+        method: "put",
+//        params: JSON.stringify(this.configCluster.data.clusters[0]),
+        params: this.res,
+        on: {
+          success (){
+            this.$router.push({ name: 'Node', params: { id: this.nodeid }})
+          }
+        }
+      }
+    },
+    configEndpoints () {
+      return {
+        url: '/config/' + this.nodeid + "/endpoints/" + this.clusterid,
+        auto: true,
+        method: "get",
+        on: {
+          success () {
+            if ( this.configEndpoints.data.endpoints.length == 0 ){
+              this.configEndpoints.data.endpoints.push ( {endpoints: Array()} )
+            }
+          }
+        }
+      }
+    },
+    updateEndpoint () {
+      return {
+        url: '/config/' + this.nodeid + '/endpoints/' + this.clusterid,
+        auto: false,
+        method: "put",
+        params: JSON.stringify(this.configEndpoints.data.endpoints[0]),
+        on: {
+          success () {
+            this.$thimera.configEndpoints.reload()
+          }
+        }
+      }
+    },
+    deleteEndpoint () {
+      return {
+        url: '/config/' + this.nodeid + "/endpoints/" + this.clusterid,
+        auto: false,
+        method: "delete",
+        params: JSON.stringify(this.configEndpoints.data.endpoints[0]),
+        on: {
+          success () {
+            this.$chimera.configEndpoints.reload ()
+          }
+        }
+      }
+    },
+    addEndpoint() {
+      return {
+        url: '/config/' + this.nodeid + '/endpoints/',
+        auto: false,
+        method: "put",
+        params: JSON.stringify(this.endpointCreate),
+        on: {
+          success () {
+            this.$chimera.configEndpoints.reload ()
+          }
+        }
+      }
+    }
+  },
+  components: {
+  },
+  computed: {
+    hasCommonProtocolHaxHeadersCount: function() {
+      if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] ){
+          if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions ){
+            if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions.maxHeadersCount ){
+              return true
+            }
+          }
+        }
+      }
+      return false
+    },
+    hasCommonProtocolMaxStreamDuration: function() {
+      if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] ){
+          if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions ){
+            if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions.maxStreamDuration ){
+              return true
+            }
+          }
+        }
+      }
+      return false
+    },
+    hasCommonProtocolUseDownstream: function() {
+      if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] ){
+          if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].useDownstreamProtocolConfig ){
+            return true
+          }
+        }
+      }
+      return false
+    },
+    hasCommonProtocolUseExplicit: function() {
+      if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] ){
+          if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].explicitHttpConfig ){
+            return true
+          }
+        }
+      }
+      return false
+    },
+    commonProtocolExplicitVersion: function() {
+      if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] ){
+          if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].explicitHttpConfig ){
+            if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].explicitHttpConfig.httpProtocolOptions ){
+              return "HTTP1"
+            }
+            if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].explicitHttpConfig.http2ProtocolOptions ){
+              return "HTTP2"
+            }
+            return "HTTP1.1"
+          }
+        }
+      }
+      return ""
+    },
+    hasMaxStreamDurationtLimit: function() {
+      if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxStreamDuration ) {
+          return true
+        }
+      }
+      return false
+    },
+    hasHeadersCountLimit: function() {
+      if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxHeadersCount ) {
+          return true
+        }
+      }
+      return false
+    },
+    maxStreamDurationLimit: function() {
+      if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxStreamDuration ) {
+          return this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxStreamDuration
+        }
+      }
+      return ""
+    },
+    headersCountLimit: function() {
+      if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions ){
+        if ( this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxHeadersCount ) {
+          return this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxHeadersCount
+        }
+      }
+      return 100
+    },
+    requestsPerConnection: function() {
+      if ( this.configCluster.data.clusters[0].maxRequestsPerConnection ) {
+        return this.configCluster.data.clusters[0].maxRequestsPerConnection
+      }
+      return ""
+    },
+    hasRequestsPerConnection: function() {
+      if ( this.configCluster.data.clusters[0].maxRequestsPerConnection ) {
+        return true
+      }
+      return false
+    },
+    endpointOverprovisioningFactor: function() {
+      if ( this.configEndpoints.data ) {
+        if ( this.configEndpoints.data.endpoints.length>0) {
+          if ( this.configEndpoints.data.endpoints[0].policy ){
+            if ( this.configEndpoints.data.endpoints[0].policy.overprovisioningFactor ){
+              return this.configEndpoints.data.endpoints[0].policy.overprovisioningFactor
+            }
+          }
+        }
+      }
+      return 140
+    },
+    isendPointOverprovisioningFactorNotSet: function() {
+      if ( this.configEndpoints.data ) {
+        if ( this.configEndpoints.data.endpoints.length>0){
+          if ( this.configEndpoints.data.endpoints[0].policy ){
+            if ( this.configEndpoints.data.endpoints[0].policy.overprovisioningFactor ){
+              return false
+            }
+          }
+        }
+      }
+      return true
+    },
+    perConnectionBufferLimitBytes: function() {
+      if ( typeof this.configCluster.data.clusters[0].perConnectionBufferLimitBytes != 'undefined' ){
+        return this.configCluster.data.clusters[0].perConnectionBufferLimitBytes
+      }
+      return 0
+    },
+    perConnectionBufferLimitBytesDisabled: function() {
+      if ( typeof this.configCluster.data.clusters[0].perConnectionBufferLimitBytes === 'undefined' ){
+        return false
+      }
+      return true
+    },
+    hasSSL: function() {
+      if ( this.configCluster.data.clusters[0].transportSocket ){
+        return true
+      }
+      return false
+    },
+    hasSNI: function() {
+      if ( this.configCluster.data.clusters[0].transportSocket ){
+        if ( this.configCluster.data.clusters[0].transportSocket.typedConfig.sni ){
+          return true
+        }
+      }
+      return false
+    },
+    lbPolicy: function () {
+      if ( this.configCluster.data.clusters[0].lbPolicy ){
+        return this.configCluster.data.clusters[0].lbPolicy
+      }
+      return "ROUND_ROBIN"
+    },
+    hasWeightedBalance: function() {
+      if ( this.configCluster.data.clusters[0].commonLbConfig ) {
+        if ( this.configCluster.data.clusters[0].commonLbConfig.localityWeightedLbConfig ){
+          return true
+        }
+      }
+      return false
+    },
+    panicThreshold: function() {
+      if ( this.configCluster.data.clusters[0].commonLbConfig ) {
+        if ( this.configCluster.data.clusters[0].commonLbConfig.healthyPanicThreshold ) {
+          if ( this.configCluster.data.clusters[0].commonLbConfig.healthyPanicThreshold.value ) {
+            return this.configCluster.data.clusters[0].commonLbConfig.healthyPanicThreshold.value
+          }
+        }
+      }
+      return 0
+    },
+    hasLeastRequestLbConfig: function() {
+      if ( this.configCluster.data.clusters[0].leastRequestLbConfig ){
+        return true
+      }
+      return false
+    },
+    hasHealthCheck: function() {
+      if ( this.configCluster.data.clusters[0].healthChecks ) {
+        return true
+      }
+      return false
+    },
+    hasHttpHealthCheckExpectStatuses: function() {
+      if ( this.configCluster.data.clusters[0].healthChecks ) {
+        if ( this.configCluster.data.clusters[0].healthChecks[0].httpHealthCheck ) {
+          if ( this.configCluster.data.clusters[0].healthChecks[0].httpHealthCheck.expectedStatuses) {
+            return true
+          }
+        }
+      }
+      return false
+    },
+    hasHttpHealthCheckHost: function() {
+      if ( this.configCluster.data.clusters[0].healthChecks ) {
+        if ( this.configCluster.data.clusters[0].healthChecks[0].httpHealthCheck ) {
+          if ( this.configCluster.data.clusters[0].healthChecks[0].httpHealthCheck.host ) {
+            return true
+          }
+        }
+      }
+      return false
+    },
+    hasHttpHealthCheck: function() {
+      if ( this.configCluster.data.clusters[0].healthChecks ) {
+        if ( this.configCluster.data.clusters[0].healthChecks[0].httpHealthCheck ) {
+          return true
+        }
+      }
+      return false
+    }
+  },
+  methods: {
+    submitHttpProtocolOptions: function() {
+      this.$set(this.configCluster.data.clusters[0],"typedExtensionProtocolOptions", new Map())
+      this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] = Object()
+      this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'],"commonHttpProtocolOptions", Object())
+      if ( this.httpProtocolOptionsForm.headersCountLimit > 0 ) {
+        this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions,"maxHeadersCount", this.httpProtocolOptionsForm.headersCountLimit)
+      }
+      if ( this.httpProtocolOptionsForm.maxStreamDuration > 0 ) {
+        this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].commonHttpProtocolOptions,"maxStreamDuration", this.httpProtocolOptionsForm.maxStreamDuration + "s")
+      }
+      if ( this.httpProtocolOptionsForm.protocolUsage == "explicitProtocol" ) {
+        this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'],"explicitHttpConfig", Object())
+        if ( this.httpProtocolOptionsForm.protocolVersion == "HTTP1" ) {
+          this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].explicitHttpConfig,"httpProtocolOptions", Object())
+        }
+        if ( this.httpProtocolOptionsForm.protocolVersion == "HTTP2" ) {
+          this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'].explicitHttpConfig,"http2ProtocolOptions", Object())
+        }
+      } else {
+        this.$set(this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'],"useDownstreamProtocolConfig", Object())
+      }
+    },
+    submitHeadersCountLimit: function(){
+      if( !this.headersCountLimitForm.enabled && this.configCluster.data.clusters[0].commonHttpProtocolOptions ){
+        if( this.configCluster.data.clusters[0].commonHttpProtocolOptions.maxHeadersCount ){
+        this.$delete(this.configCluster.data.clusters[0].commonHttpProtocolOptions, 'maxHeadersCount')
+        }
+      }
+      if ( this.headersCountLimitForm.enabled ){
+        if ( ! this.configCluster.data.clusters[0].commonHttpProtocolOptions ) {
+          this.$set(this.configCluster.data.clusters[0],'commonHttpProtocolOptions', Object())
+        }
+        if (this.headersCountLimitForm.headersCountLimit>0){
+          this.$set(this.configCluster.data.clusters[0].commonHttpProtocolOptions, 'maxHeadersCount', this.headersCountLimitForm.headersCountLimit)
+        }
+        if (this.headersCountLimitForm.maxStreamDuration>0){
+          this.$set(this.configCluster.data.clusters[0].commonHttpProtocolOptions, 'maxStreamDuration', this.headersCountLimitForm.maxStreamDuration+'s')
+        }
+      }
+      this.headersCountLimitVisible = false
+    },
+
+    submitOverprovisioningFactor: function(){
+      if ( !this.overprovisioningFactorForm.enabled && this.configEndpoints.data.endpoints[0].policy ){
+        if ( this.configEndpoints.data.endpoints[0].policy.overprovisioningFactor ) {
+          this.$delete(this.configEndpoints.data.endpoints[0].policy,"overprovisioningFactor")
+        }
+      }
+      if ( this.overprovisioningFactorForm.enabled ){
+        if ( !this.configEndpoints.data.endpoints[0].policy ){
+          this.$set(this.configEndpoints.data.endpoints[0],"policy", Object())
+        }
+        this.$set(this.configEndpoints.data.endpoints[0].policy,"overprovisioningFactor", this.overprovisioningFactorForm.overprovisioningFactor)
+      }
+      this.$chimera.updateEndpoint.reload()
+      this.overprovisioningFactorVisible = false
+    },
+    submitRequestsPerConnection: function(){
+      this.requestsPerConnectionVisible = false
+      if (this.requestsPerConnectionForm.enabled && this.requestsPerConnectionForm.requests > 0){
+        this.$set(this.configCluster.data.clusters[0],"maxRequestsPerConnection",this.requestsPerConnectionForm.requests)
+        return
+      }
+      if(this.configCluster.data.clusters[0].maxRequestsPerConnection && !this.requestsPerConnectionForm.enabled){
+        this.$delete(this.configCluster.data.clusters[0],"maxRequestsPerConnection")
+      }
+    },
+    submitPerConnectionBufferLimitBytes: function(){
+      this.perConnectionBufferLimitBytesVisible = false
+      if (this.perConnectionBufferLimitBytesForm.enabled){
+        this.$set(this.configCluster.data.clusters[0],"perConnectionBufferLimitBytes",this.perConnectionBufferLimitBytesForm.perConnectionBufferLimitBytes)
+        return
+      }
+      if(this.configCluster.data.clusters[0].perConnectionBufferLimitBytes){
+        this.$delete(this.configCluster.data.clusters[0],"perConnectionBufferLimitBytes")
+      }
+    },
+    endpointPriority: function(ei){
+      if ( this.configEndpoints.data.endpoints[0].endpoints[ei].priority ){
+        return this.configEndpoints.data.endpoints[0].endpoints[ei].priority
+      }
+      return 0
+    },
+    submitConnectionTimeout: function () {
+      this.configCluster.data.clusters[0].connectTimeout = this.connectionTimeoutForm.timeout + this.connectionTimeoutForm.timeoutUnit
+      this.connectionTimeoutVisible = false
+    },
+    submitLbPolicy: function() {
+      this.$set(this.configCluster.data.clusters[0],"lbPolicy", this.lbPolicyForm.policy)
+      if ( this.lbPolicyForm.policy == "LEAST_REQUEST" ){
+        this.$set(this.configCluster.data.clusters[0],"leastRequestLbConfig",{choiceCount: this.lbPolicyForm.choiceCount})
+      } else if ( this.configCluster.data.clusters[0].leastRequestLbConfig ) {
+        this.$delete(this.configCluster.data.clusters[0],"leastRequestLbConfig")
+      }
+      this.lbPolicyVisible = false
+    },
+    submitCommonPolicy: function() {
+      this.$set(this.configCluster.data.clusters[0],"commonLbConfig",Object())
+      if ( this.commonPolicyForm.panic > 0 ){
+        this.$set(this.configCluster.data.clusters[0].commonLbConfig,"healthyPanicThreshold",{value: this.commonPolicyForm.panic})
+      } 
+      if ( this.commonPolicyForm.weighted ) {
+        this.$set(this.configCluster.data.clusters[0].commonLbConfig,"localityWeightedLbConfig",Object())
+      }
+      this.commonPolicyVisible = false
+    },
+    submitHealthCheck: function() {
+      var healthCheckObject
+      console.log(this.healthCheckForm)
+      healthCheckObject = new Object ()
+      healthCheckObject.timeout = this.healthCheckForm.timeout + this.healthCheckForm.timeoutUnit
+      healthCheckObject.interval = this.healthCheckForm.interval + this.healthCheckForm.intervalUnit
+      healthCheckObject.healthyThreshold = this.healthCheckForm.healthyThreshold
+      healthCheckObject.unhealthyThreshold = this.healthCheckForm.unhealthyThreshold
+      if ( this.healthCheckForm.httpHealthCheck ){
+        healthCheckObject.httpHealthCheck = { path: this.healthCheckForm.httpPath }
+        if (this.healthCheckForm.httpHostEnable) {
+          this.$set(healthCheckObject.httpHealthCheck,"host",this.healthCheckForm.httpHost)
+        }
+        if ( this.healthCheckForm.expectedStatuses.length >0 ){
+          this.$set(healthCheckObject.httpHealthCheck, "expectedStatuses", Array())
+          for ( var i=0; i < this.healthCheckForm.expectedStatuses.length; i++ ){
+            healthCheckObject.httpHealthCheck.expectedStatuses.push({start: this.healthCheckForm.expectedStatuses[i].start, end: this.healthCheckForm.expectedStatuses[i].end})
+          }
+        }
+      }
+      this.$set ( this.configCluster.data.clusters[0],"healthChecks", Array () )
+      this.configCluster.data.clusters[0].healthChecks.push(healthCheckObject)
+      this.healthCheckVisible = false
+    },
+    deleteEndpoint: function(ei,elbi){
+      this.$delete(this.configEndpoints.data.endpoints[0].endpoints[ei].lbEndpoints,elbi)
+      if ( this.configEndpoints.data.endpoints[0].endpoints[ei].lbEndpoints.length == 0){
+        this.$delete(this.configEndpoints.data.endpoints[0].endpoints,ei)
+      }
+      this.$chimera.deleteEndpoint.reload()
+    },
+    submitAddEndpoint: function() {
+      this.endpointCreate.clusterName = this.clusterid
+      this.endpointCreate.endpoints[0].priority = this.addEndpointForm.priority
+      this.endpointCreate.endpoints[0].lbEndpoints[0].endpoint.address.socketAddress.address = this.addEndpointForm.address
+      this.endpointCreate.endpoints[0].lbEndpoints[0].endpoint.address.socketAddress.portValue = this.addEndpointForm.port
+      if ( this.addEndpointForm.useWeight ) {
+        this.$set(this.endpointCreate.endpoints[0].lbEndpoints[0],"loadBalancingWeight", this.addEndpointForm.weight)
+      } else {
+        this.$delete(this.endpointCreate.endpoints[0].lbEndpoints[0],"loadBalancingWeight")
+      }
+      this.addEndpointVisible = false
+      this.$chimera.addEndpoint.reload ()
+      this.$chimera.configEndpoints.reload ()
+    },
+    submitEditEndpointSSL: function() {
+      this.editEndpointSSLVisible = false
+      if ( !this.editEndpointSSLForm.enableSsl && this.configCluster.data.clusters[0].transportSocket ){
+        this.$delete(this.configCluster.data.clusters[0],"transportSocket")
+        return
+      }
+      this.$set(this.configCluster.data.clusters[0],"transportSocket",{name:"envoy.transport_sockets.tls",typedConfig:{}})
+      if ( this.editEndpointSSLForm.enableSni ){
+        this.$set(this.configCluster.data.clusters[0].transportSocket.typedConfig,"sni",this.editEndpointSSLForm.sni)
+      }
+    },
+    submitSave: function() {
+
+      this.res = JSON.stringify(this.configCluster.data.clusters[0])
+      this.$chimera.saveCluster.reload()
+    }
+  },
+  mounted () {
+  }
+}
+</script>
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+h3 {
+  margin: 40px 0 0;
+}
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+li {
+  display: inline-block;
+  margin: 0 10px;
+}
+a {
+  color: #42b983;
+}
+</style>
+<style>
+  .custom-tree-node {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      padding-right: 8px;
+  }
+  .el-row {
+    margin-bottom: 20px;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+</style>
