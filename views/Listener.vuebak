@@ -54,7 +54,7 @@
         <el-button icon="el-icon-arrow-up" @click="upFC(i)"></el-button>
         <el-button icon="el-icon-arrow-down" @click="downFC(i)"></el-button>
       </div>
-      <FilterChain :data="fc" :index="i" :nodeid="nodeid" @addFilterMatch="addFilterMatch" @addFilterMatchSource="addFilterMatchSource" @addFilterMatchDomain="addFilterMatchDomain" @removeFilterMatch="removeFilterMatch" @removeFilterMatchSource="removeFilterMatchSource" @removeFilterMatchDomain="removeFilterMatchDomain" @addTrafficFilter="addTrafficFilter" @removeTrafficFilter="removeTrafficFilter" @setTcpProxy="setTcpProxy" @enableAccessLog="enableAccessLog" @disableAccessLog="disableAccessLog" @accessLogHeaders="accessLogHeaders" @removeAccessLogHeaders="removeAccessLogHeaders" @addVHDomMatch="addVHDomMatch" @delVHDomMatch="delVHDomMatch" @addVHRoute="addVHRoute" @delVHRoute="delVHRoute" @upVHRoute="upVHRoute" @downVHRoute="downVHRoute" @addVH="addVH" @delVH="delVH" @delTls="delTls" @addTls="addTls" @delTlsProtocolVersion="delTlsProtocolVersion" @setTlsProtocolVersion="setTlsProtocolVersion" @setTlsCipherSuites="setTlsCipherSuites" @delTlsCipherSuites="delTlsCipherSuites" @addTlsCertificate="addTlsCertificate" @delTlsCertificate="delTlsCertificate" @setTlsValidate="setTlsValidate" @delTlsValidate="delTlsValidate" @setXff="setXff" @addConsistentHash="addConsistentHash" @delConsistentHash="delConsistentHash" @upConsistentHash="upConsistentHash" @downConsistentHash="downConsistentHash" @setGlobalRateLimitService="setGlobalRateLimitService" @delGlobalRateLimitService="delGlobalRateLimitService" @addRLDescriptor="addRLDescriptor" @delRLDescriptor="delRLDescriptor" @upVH="upVH" @downVH="downVH" @setHeadersLimit="setHeadersLimit" @setHeadersCountLimit="setHeadersCountLimit" @setExtAuthzService="setExtAuthzService" @delExtAuthzService="delExtAuthzService" @enableUpgrade="enableUpgrade" @disableUpgrade="disableUpgrade" @addUpgrade="addUpgrade" @removeUpgrade="removeUpgrade"></FilterChain>
+      <FilterChain :data="fc" :index="i" :nodeid="nodeid" @setHttpProtocolOptions="setHttpProtocolOptions" @addFilterMatch="addFilterMatch" @addFilterMatchSource="addFilterMatchSource" @addFilterMatchDomain="addFilterMatchDomain" @removeFilterMatch="removeFilterMatch" @removeFilterMatchSource="removeFilterMatchSource" @removeFilterMatchDomain="removeFilterMatchDomain" @addTrafficFilter="addTrafficFilter" @removeTrafficFilter="removeTrafficFilter" @setTcpProxy="setTcpProxy" @enableAccessLog="enableAccessLog" @disableAccessLog="disableAccessLog" @accessLogHeaders="accessLogHeaders" @removeAccessLogHeaders="removeAccessLogHeaders" @addVHDomMatch="addVHDomMatch" @delVHDomMatch="delVHDomMatch" @addVHRoute="addVHRoute" @delVHRoute="delVHRoute" @upVHRoute="upVHRoute" @downVHRoute="downVHRoute" @addVH="addVH" @delVH="delVH" @delTls="delTls" @addTls="addTls" @delTlsProtocolVersion="delTlsProtocolVersion" @setTlsProtocolVersion="setTlsProtocolVersion" @setTlsCipherSuites="setTlsCipherSuites" @delTlsCipherSuites="delTlsCipherSuites" @addTlsCertificate="addTlsCertificate" @delTlsCertificate="delTlsCertificate" @setTlsValidate="setTlsValidate" @delTlsValidate="delTlsValidate" @setXff="setXff" @addConsistentHash="addConsistentHash" @delConsistentHash="delConsistentHash" @upConsistentHash="upConsistentHash" @downConsistentHash="downConsistentHash" @setGlobalRateLimitService="setGlobalRateLimitService" @delGlobalRateLimitService="delGlobalRateLimitService" @addRLDescriptor="addRLDescriptor" @delRLDescriptor="delRLDescriptor" @upVH="upVH" @downVH="downVH" @setHeadersLimit="setHeadersLimit" @setHeadersCountLimit="setHeadersCountLimit" @setExtAuthzService="setExtAuthzService" @delExtAuthzService="delExtAuthzService" @enableUpgrade="enableUpgrade" @disableUpgrade="disableUpgrade" @addUpgrade="addUpgrade" @removeUpgrade="removeUpgrade"></FilterChain>
     </div>
     </el-collapse>
   </div>
@@ -65,7 +65,7 @@ import Vue from "vue"
 import VueChimera from "vue-chimera"
 import FilterChain from '@/components/FilterChain.vue'
 Vue.use(VueChimera, {
-  baseURL: "http://10.99.6.127:8080/api/v1"
+  baseURL: "http://10.99.6.41:8080/api/v1"
   // Chimera default options
 })
 export default {
@@ -126,6 +126,9 @@ export default {
       if ( !check ){
         delete this.configListener.data.listeners[0].perConnectionBufferLimitBytes
       }
+    },
+    setHttpProtocolOptions: function(index, form){
+      this.$set(this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig,"httpProtocolOptions",{acceptHttp10: form.acceptHttp10})
     },
     setHeadersCountLimit: function(index, form){
       if( !form.enabled && this.configListener.data.listeners[0].filterChains[index].filters[this.configListener.data.listeners[0].filterChains[index].filters.length-1].typedConfig.commonHttpProtocolOptions ){

@@ -26,6 +26,14 @@
     </el-row>
     <el-row>
       <el-col :span="24">
+        <el-input :value="ignoreHealthOnHostRemoval" :disabled="!ignoreHealthOnHostRemovalDisabled">
+          <template slot="prepend">Ignore Health On Host Removal</template>
+          <template slot="append"><el-button icon="el-icon-edit" @click="ignoreHealthOnHostRemovalVisible=true"></el-button></template>
+        </el-input>
+      </el-col>
+    </el-row>
+    <el-row>
+      <el-col :span="24">
         <el-input v-bind:value="headersCountLimit" v-bind:disabled="!hasHeadersCountLimit"><template slot="prepend">Header Count Limit:</template><template slot="append"><el-button icon="el-icon-edit" @click="headersCountLimitVisible=true"></el-button></template></el-input>
       </el-col>
       <el-col :span="24">
@@ -369,6 +377,20 @@
         <el-button>Cancel</el-button>
       </el-form>
     </el-dialog>
+    <el-dialog title="Ignore Health On Host Removal" :visible.sync="ignoreHealthOnHostRemovalVisible">
+      <el-form ref="ignoreHealthOnHostRemovalForm">
+        <el-form-item label="Enable ignore health on host removal">
+          <el-checkbox v-model="ignoreHealthOnHostRemovalForm.enabled"></el-checkbox>
+        </el-form-item>
+        <div v-if="ignoreHealthOnHostRemovalForm.enabled">
+          <el-form-item label="Ignore health on host removal">
+            <el-checkbox v-model="ignoreHealthOnHostRemovalForm.ignoreHealthOnHostRemoval"></el-checkbox>
+          </el-form-item>
+        </div>
+        <el-button type="primary" @click="submitIgnoreHealthOnHostRemoval">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
     <el-dialog title="HTTP Protocol Options" :visible.sync="httpProtocolOptionsVisible">
       <el-form ref="httpProtocolOptionsForm">
         <el-form-item label="Headers count limit. 0 to disable">
@@ -404,7 +426,7 @@
 import Vue from "vue"
 import VueChimera from "vue-chimera"
 Vue.use(VueChimera, {
-  baseURL: "http://10.99.6.127:8080/api/v1"
+  baseURL: "http://10.99.6.41:8080/api/v1"
 //  baseURL: "/api/v1"
   // Chimera default options
 })
@@ -415,6 +437,11 @@ export default {
       nodeid: this.$route.params.id,
       clusterid: this.$route.params.c_id,
       res: "",
+      ignoreHealthOnHostRemovalVisible: false,
+      ignoreHealthOnHostRemovalForm: {
+        enabled: false,
+        ignoreHealthOnHostRemoval: false
+      },
       httpProtocolOptionsVisible: false,
       httpProtocolOptionsForm: {
         headersCountLimit: 0,
@@ -686,6 +713,12 @@ export default {
       }
       return 100
     },
+    ignoreHealthOnHostRemoval: function() {
+      if ( typeof this.configCluster.data.clusters[0].ignoreHealthOnHostRemoval != 'undefined' ){
+        return this.configCluster.data.clusters[0].ignoreHealthOnHostRemoval
+      }
+      return ""
+    },
     requestsPerConnection: function() {
       if ( this.configCluster.data.clusters[0].maxRequestsPerConnection ) {
         return this.configCluster.data.clusters[0].maxRequestsPerConnection
@@ -727,6 +760,12 @@ export default {
         return this.configCluster.data.clusters[0].perConnectionBufferLimitBytes
       }
       return 0
+    },
+    ignoreHealthOnHostRemovalDisabled: function() {
+      if ( typeof this.configCluster.data.clusters[0].ignoreHealthOnHostRemoval == 'undefined' ){
+        return false
+      }
+      return true
     },
     perConnectionBufferLimitBytesDisabled: function() {
       if ( typeof this.configCluster.data.clusters[0].perConnectionBufferLimitBytes === 'undefined' ){
@@ -814,6 +853,16 @@ export default {
     }
   },
   methods: {
+    submitIgnoreHealthOnHostRemoval: function() {
+      if ( !this.ignoreHealthOnHostRemovalForm.enabled ) {
+        if ( typeof this.configCluster.data.clusters[0].ignoreHealthOnHostRemoval != 'undefined' ){
+          this.$delete(this.configCluster.data.clusters[0], "ignoreHealthOnHostRemoval")
+        }
+      } else {
+        this.$set(this.configCluster.data.clusters[0],"ignoreHealthOnHostRemoval", this.ignoreHealthOnHostRemovalForm.ignoreHealthOnHostRemoval)
+      }
+      this.ignoreHealthOnHostRemovalVisible = false
+    },
     submitHttpProtocolOptions: function() {
       this.$set(this.configCluster.data.clusters[0],"typedExtensionProtocolOptions", new Map())
       this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] = Object()

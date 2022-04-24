@@ -52,7 +52,7 @@
 import Vue from "vue"
 import VueChimera from "vue-chimera"
 Vue.use(VueChimera, {
-  baseURL: "http://10.99.6.41:8080/api/v1"
+  baseURL: "http://127.0.0.1:8080/api/v1"
   // Chimera default options
 })
 export default {

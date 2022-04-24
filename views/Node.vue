@@ -196,7 +196,7 @@ import Interfaces from '@/components/Interfaces.vue'
 import Secrets from '@/components/Secrets.vue'
 Vue.use(VueChimera, {
 //  baseURL: "process.env.BASEURL"
-  baseURL: "http://10.99.6.41:8080/api/v1"
+  baseURL: "http://127.0.0.1:8080/api/v1"
   // Chimera default options
 })
 export default {

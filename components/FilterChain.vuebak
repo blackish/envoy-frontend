@@ -164,13 +164,25 @@
                     </el-card>
                     <el-card class="box-card">
                       <div slot="header" class="clearfix">
+                        <span>HTTP protocol options</span><el-button style="float: right; padding: 3px 0" type="text" @click="httpProtocolOptionsIsVisible = true">Change</el-button>
+                      </div>
+                      <div>
+                        <el-input v-bind:value="httpProtocolOptionsAcceptHttp10" disabled="true"><template slot="prepend">HTTP 1.0:</template></el-input>
+                      </div>
+                    </el-card>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col>
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
                         <span>Response headers to log</span><el-button style="float: right; padding: 3px 0" type="text" @click="accessLogHeadersForm.requestHeader='';accessLogHeadersForm.responseHeader='';accessLogResponseHeadersVisible = true">Add response header</el-button>
                       </div>
                       <div v-for="(acrsh,acrshindex) in data.filters[data.filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalResponseHeadersToLog" v-bind:key="acrsh">
                         <el-input v-bind:value="acrsh"><template slot="prepend">Server name:</template><template slot="append"><el-button type="danger" icon="el-icon-delete" circle @click="removeAccessLogResponseHeader(acrshindex)"></el-button></template></el-input>
                       </div>
                     </el-card>
-                  </div>
                 </el-col>
               </el-row>
               <el-divider>Headers</el-divider>
@@ -310,6 +322,15 @@
       </el-col>
     </el-row>
     </el-collapse-item>
+    <el-dialog title="HTTP protocol options" :visible.sync="httpProtocolOptionsIsVisible" >
+      <el-form ref="httpProtocolOptionsForm">
+        <el-form-item label="HTTP 1.0">
+          <el-checkbox v-model="httpProtocolOptionsForm.acceptHttp10"></el-checkbox>
+        </el-form-item>
+        <el-button type="primary" @click="httpProtocolOptionsIsVisible=false;$emit('setHttpProtocolOptions',index,httpProtocolOptionsForm)">Set</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
     <el-dialog title="Validate user" :visible.sync="tlsValidateVisible">
       <el-form ref="tlsValidateForm">
         <el-form-item label="Trusted CA secret">
@@ -561,7 +582,7 @@ import VirtualHost from '@/components/VirtualHost.vue'
 import Vue from "vue"
 import VueChimera from "vue-chimera"
 Vue.use(VueChimera, {
-  baseURL: "http://10.99.6.127:8080/api/v1"
+  baseURL: "http://10.99.6.41:8080/api/v1"
   // Chimera default options
 })
 export default {
@@ -579,6 +600,10 @@ export default {
       upgradeVisible: false,
       upgradeForm: {
         protocol: ""
+      },
+      httpProtocolOptionsIsVisible: false,
+      httpProtocolOptionsForm: {
+        acceptHttp10: true
       },
       headersCountLimitVisible: false,
       headersCountLimitForm: {
@@ -673,6 +698,14 @@ export default {
     }
   },
   computed: {
+    httpProtocolOptionsAcceptHttp10: function() {
+      if ( this.data.filters[this.data.filters.length - 1].typedConfig.httpProtocolOptions ){
+        if ( this.data.filters[this.data.filters.length - 1].typedConfig.httpProtocolOptions.acceptHttp10 != undefined ) {
+          return this.data.filters[this.data.filters.length - 1].typedConfig.httpProtocolOptions.acceptHttp10
+        }
+      }
+      return false
+    },
     hasHeadersCountLimit: function() {
       if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions ){
         if ( this.data.filters[this.data.filters.length - 1].typedConfig.commonHttpProtocolOptions.maxHeadersCount ) {

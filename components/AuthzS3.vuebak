@@ -33,7 +33,7 @@ import Vue from "vue"
 import AuthzS3NS from '@/components/AuthzS3NS.vue'
 import VueChimera from "vue-chimera"
 Vue.use(VueChimera, {
-  baseURL: "http://10.99.6.127:8080/api/v1"
+  baseURL: "http://10.99.6.41:8080/api/v1"
   // Chimera default options
 })
 export default {

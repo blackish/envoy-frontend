@@ -130,19 +130,6 @@
               </el-row>
               <el-divider></el-divider>
               <el-row>
-                <el-col>
-                  <el-card class="box-card">
-                    <div slot="header" class="clearfix">
-                      <span>HTTP protocol options</span><el-button style="float: right; padding: 3px 0" type="text" @click="httpProtocolOptionsIsVisible = true">Change</el-button>
-                    </div>
-                    <div>
-                      <el-input v-bind:value="httpProtocolOptionsAcceptHttp10" disabled="true"><template slot="prepend">HTTP 1.0:</template></el-input>
-                    </div>
-                  </el-card>
-                </el-col>
-              </el-row>
-              <el-divider></el-divider>
-              <el-row>
                 <el-col :span="4">
                   <span>Global RateLimit:</span><el-button v-bind:disabled="hasGlobalRateLimit>-1" type="success" @click="globalRateLimitServiceVisible=true">Enable</el-button><el-button v-bind:disabled="hasGlobalRateLimit==-1" type="danger" @click='$emit("delGlobalRateLimitService",index,getGlobalRateLimitService())'>Disable</el-button>
                 </el-col>
@@ -177,13 +164,25 @@
                     </el-card>
                     <el-card class="box-card">
                       <div slot="header" class="clearfix">
+                        <span>HTTP protocol options</span><el-button style="float: right; padding: 3px 0" type="text" @click="httpProtocolOptionsIsVisible = true">Change</el-button>
+                      </div>
+                      <div>
+                        <el-input v-bind:value="httpProtocolOptionsAcceptHttp10" disabled="true"><template slot="prepend">HTTP 1.0:</template></el-input>
+                      </div>
+                    </el-card>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-row>
+                <el-col>
+                    <el-card class="box-card">
+                      <div slot="header" class="clearfix">
                         <span>Response headers to log</span><el-button style="float: right; padding: 3px 0" type="text" @click="accessLogHeadersForm.requestHeader='';accessLogHeadersForm.responseHeader='';accessLogResponseHeadersVisible = true">Add response header</el-button>
                       </div>
                       <div v-for="(acrsh,acrshindex) in data.filters[data.filters.length - 1].typedConfig.accessLog[0].typedConfig.additionalResponseHeadersToLog" v-bind:key="acrsh">
                         <el-input v-bind:value="acrsh"><template slot="prepend">Server name:</template><template slot="append"><el-button type="danger" icon="el-icon-delete" circle @click="removeAccessLogResponseHeader(acrshindex)"></el-button></template></el-input>
                       </div>
                     </el-card>
-                  </div>
                 </el-col>
               </el-row>
               <el-divider>Headers</el-divider>
@@ -323,7 +322,7 @@
       </el-col>
     </el-row>
     </el-collapse-item>
-    <el-dialog title="HTTP protocol options" :visible.sync="httpProtocolOptionsIsVisible">
+    <el-dialog title="HTTP protocol options" :visible.sync="httpProtocolOptionsIsVisible" >
       <el-form ref="httpProtocolOptionsForm">
         <el-form-item label="HTTP 1.0">
           <el-checkbox v-model="httpProtocolOptionsForm.acceptHttp10"></el-checkbox>
