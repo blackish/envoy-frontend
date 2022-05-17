@@ -61,6 +61,23 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-row>
+      <el-col :span="24">
+        <el-card class="box-card">
+          <div slot="header" class="clearfix">
+            <span>Circuit Breakers</span><el-button style="float: right; padding: 3px 0" type="text" @click="circuitBreakerVisible = true">Change</el-button>
+          </div>
+          <div v-if="hasCircuitBreakers">
+            <div v-for="(c, cin) in configCluster.data.clusters[0].cirtuitBreakers.thresholds":key="c">
+              <el-button type="danger" @click="$delete(configCluster.data.clusters[0].circuitBreakers.thresholds,cin)">Delete threshold</el-button>
+              <CircuitBreader :data="c"/>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-row>
       <el-col :span="24">
         <el-card class="box-card">
@@ -418,12 +435,36 @@
         <el-button>Cancel</el-button>
       </el-form>
     </el-dialog>
-
+    <el-dialog title="Circuit Breaker" :visible.sync="circuitBreakerVisible">
+      <el-form ref="circuitBreakerForm">
+        <el-form-item label="Priority">
+          <el-select v-model="circuitBreakerForm.priority">
+            <el-option label="Defailt" value="0"></el-option>
+            <el-option label="High" value="1"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Max connections">
+          <el-input v-model.number="circuitBreakerForm.maxConnections" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Max pending requests">
+          <el-input v-model.number="circuitBreakerForm.maxPendingRequests" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Max requests">
+          <el-input v-model.number="circuitBreakerForm.maxRequests" type="number"></el-input>
+        </el-form-item>
+        <el-form-item label="Max retries">
+          <el-input v-model.number="circuitBreakerForm.maxRetries" type="number"></el-input>
+        </el-form-item>
+        <el-button type="primary" @click="submitCircuitBreaker">Add</el-button>
+        <el-button>Cancel</el-button>
+      </el-form>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import Vue from "vue"
+import CircuitBreaker from '@/components/CircuitBreaker.vue'
 import VueChimera from "vue-chimera"
 Vue.use(VueChimera, {
   baseURL: "http://127.0.0.1:8080/api/v1"
@@ -437,6 +478,14 @@ export default {
       nodeid: this.$route.params.id,
       clusterid: this.$route.params.c_id,
       res: "",
+      circuitBreakerVisible: false,
+      circuitBreakerForm: {
+        priority: 0,
+        maxConnections: 1024,
+        maxPendingRequests: 1024,
+        maxRequests: 1024,
+        maxRetries: 3
+      },
       ignoreHealthOnHostRemovalVisible: false,
       ignoreHealthOnHostRemovalForm: {
         enabled: false,
@@ -619,6 +668,7 @@ export default {
     }
   },
   components: {
+    CircuitBreaker
   },
   computed: {
     hasCommonProtocolHaxHeadersCount: function() {
@@ -853,6 +903,32 @@ export default {
     }
   },
   methods: {
+    deleteCircuitBreaker: function(index) {
+      this.$delete(configCluster.data.clusters[0].circuitBreakers.thresholds,index)
+      if ( configCluster.data.clusters[0].circuitBreakers.thresholds.length == 0 ) {
+        this.$delete(configCluster.data.clusters[0], "circuitBreakers")
+      }
+    },
+    submitCircuitBreaker: function() {
+      if (!this.configCluster.data.clusters[0].circuitBreakers) {
+        this.$set(this.configCluster.data.clusters[0], "circuitBreaker", {thresholds: Array()})
+      }
+      newThreshold = { priority: this.circuitBreakerForm.priority }
+      if ( this.circuitBreakerForm.maxConnections != 140 ) {
+        this.$set(newThreshold, "maxConnections", this.circuitBreakersForm.maxConnections)
+      }
+      if ( this.circuitBreakerForm.maxPendingRequests != 140 ) {
+        this.$set(newThreshold, "maxPendingRequests", this.circuitBreakersForm.maxPendingRequests)
+      }
+      if ( this.circuitBreakerForm.maxRequests != 140 ) {
+        this.$set(newThreshold, "maxRequests", this.circuitBreakersForm.maxRequests)
+      }
+      if ( this.circuitBreakerForm.maxRetries != 3 ) {
+        this.$set(newThreshold, "maxRetries", this.circuitBreakersForm.maxRetries)
+      }
+      this.configCluster.data.clusters[0].circuitBreakers.thresholds.push(newThreshold)
+      this.circuitBreakerVisible = false
+    },
     submitIgnoreHealthOnHostRemoval: function() {
       if ( !this.ignoreHealthOnHostRemovalForm.enabled ) {
         if ( typeof this.configCluster.data.clusters[0].ignoreHealthOnHostRemoval != 'undefined' ){
