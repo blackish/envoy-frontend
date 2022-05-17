@@ -3,17 +3,17 @@
     <div>
       <el-input :value="data.priority"><template slot="prepend">Priority</template></el-input>
     </div>
-    <div v-if="hasCircuitBreakersMaxConnections">
-      <el-input :value="data.MaxConnections"><template slot="prepend">Max Connections</template></el-input>
+    <div v-if="hasCircuitBreakerMaxConnections">
+      <el-input :value="data.maxConnections"><template slot="prepend">Max Connections</template></el-input>
     </div>
-    <div v-if="hasCircuitBreakersMaxPendingRequests">
-      <el-input :value="data.MaxPendingRequests"><template slot="prepend">Max Pending Requests</template></el-input>
+    <div v-if="hasCircuitBreakerMaxPendingRequests">
+      <el-input :value="data.maxPendingRequests"><template slot="prepend">Max Pending Requests</template></el-input>
     </div>
-    <div v-if="hasCircuitBreakersMaxRequests">
-      <el-input :value="data.MaxRequests"><template slot="prepend">Max Requests</template></el-input>
+    <div v-if="hasCircuitBreakerMaxRequests">
+      <el-input :value="data.maxRequests"><template slot="prepend">Max Requests</template></el-input>
     </div>
-    <div v-if="hasCircuitBreakersMaxRetries">
-      <el-input :value="data.MaxRetries"><template slot="prepend">Max Retries</template></el-input>
+    <div v-if="hasCircuitBreakerMaxRetries">
+      <el-input :value="data.maxRetries"><template slot="prepend">Max Retries</template></el-input>
     </div>
   </div>
 </template>
@@ -30,13 +30,13 @@ export default {
   },
   computed: {
     hasCircuitBreakerMaxConnections: function () {
-      if ( this.data.maxConnections ) {
+      if ( this.data.maxConnections != undefined ) {
         return true
       }
       return false
     },
     hasCircuitBreakerMaxPendingRequests: function () {
-      if ( this.data.maxPendingRequests ){
+      if ( this.data.maxPendingRequests != undefined ){
         return true;
       }
       return false

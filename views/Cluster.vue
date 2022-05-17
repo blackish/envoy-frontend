@@ -69,10 +69,10 @@
             <span>Circuit Breakers</span><el-button style="float: right; padding: 3px 0" type="text" @click="circuitBreakerVisible = true">Change</el-button>
           </div>
           <div v-if="hasCircuitBreakers">
-            <div v-for="(c, cin) in configCluster.data.clusters[0].cirtuitBreakers.thresholds":key="c">
-              <el-button type="danger" @click="$delete(configCluster.data.clusters[0].circuitBreakers.thresholds,cin)">Delete threshold</el-button>
-              <CircuitBreader :data="c"/>
-            </div>
+            <el-row v-for="(c, cin) in configCluster.data.clusters[0].circuitBreakers.thresholds" :key="c">
+              <el-col :span="4"><el-button type="danger" @click="$delete(configCluster.data.clusters[0].circuitBreakers.thresholds,cin)">Delete threshold</el-button></el-col>
+              <el-col :span="16"><CircuitBreaker :data="c"/></el-col>
+            </el-row>
           </div>
         </el-card>
       </el-col>
@@ -671,6 +671,12 @@ export default {
     CircuitBreaker
   },
   computed: {
+    hasCircuitBreakers: function() {
+      if ( this.configCluster.data.clusters[0].circuitBreakers ){
+        return true
+       }
+       return false
+    },
     hasCommonProtocolHaxHeadersCount: function() {
       if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions ){
         if ( this.configCluster.data.clusters[0].typedExtensionProtocolOptions['envoy.extensions.upstreams.http.v3.HttpProtocolOptions'] ){
@@ -904,27 +910,31 @@ export default {
   },
   methods: {
     deleteCircuitBreaker: function(index) {
-      this.$delete(configCluster.data.clusters[0].circuitBreakers.thresholds,index)
-      if ( configCluster.data.clusters[0].circuitBreakers.thresholds.length == 0 ) {
-        this.$delete(configCluster.data.clusters[0], "circuitBreakers")
+      this.$delete(this.configCluster.data.clusters[0].circuitBreakers.thresholds,index)
+      if ( this.configCluster.data.clusters[0].circuitBreakers.thresholds.length == 0 ) {
+        this.$delete(this.configCluster.data.clusters[0], "circuitBreakers")
       }
     },
     submitCircuitBreaker: function() {
+      var newThreshold
       if (!this.configCluster.data.clusters[0].circuitBreakers) {
-        this.$set(this.configCluster.data.clusters[0], "circuitBreaker", {thresholds: Array()})
+        this.$set(this.configCluster.data.clusters[0], "circuitBreakers", {thresholds: Array()})
+      }
+      if (!this.configCluster.data.clusters[0].circuitBreakers.thresholds){
+        this.$set(this.configCluster.data.clusters[0].circuitBreakers, "thresholds", Array())
       }
       newThreshold = { priority: this.circuitBreakerForm.priority }
-      if ( this.circuitBreakerForm.maxConnections != 140 ) {
-        this.$set(newThreshold, "maxConnections", this.circuitBreakersForm.maxConnections)
+      if ( this.circuitBreakerForm.maxConnections != 1024 ) {
+        this.$set(newThreshold, "maxConnections", this.circuitBreakerForm.maxConnections)
       }
-      if ( this.circuitBreakerForm.maxPendingRequests != 140 ) {
-        this.$set(newThreshold, "maxPendingRequests", this.circuitBreakersForm.maxPendingRequests)
+      if ( this.circuitBreakerForm.maxPendingRequests != 1024 ) {
+        this.$set(newThreshold, "maxPendingRequests", this.circuitBreakerForm.maxPendingRequests)
       }
-      if ( this.circuitBreakerForm.maxRequests != 140 ) {
-        this.$set(newThreshold, "maxRequests", this.circuitBreakersForm.maxRequests)
+      if ( this.circuitBreakerForm.maxRequests != 1024 ) {
+        this.$set(newThreshold, "maxRequests", this.circuitBreakerForm.maxRequests)
       }
       if ( this.circuitBreakerForm.maxRetries != 3 ) {
-        this.$set(newThreshold, "maxRetries", this.circuitBreakersForm.maxRetries)
+        this.$set(newThreshold, "maxRetries", this.circuitBreakerForm.maxRetries)
       }
       this.configCluster.data.clusters[0].circuitBreakers.thresholds.push(newThreshold)
       this.circuitBreakerVisible = false
