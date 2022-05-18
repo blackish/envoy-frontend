@@ -5,7 +5,7 @@
         <el-button type="success" @click="saveListenerSubmit">Save</el-button>
       </el-col>
       <el-col :span="20">
-        <div><h1>{{ configListener.data.listeners[0] }}</h1></div>
+        <div><h1>{{ configListener.data.listeners[0].name }}</h1></div>
       </el-col>
     </el-row>
     <el-row>
