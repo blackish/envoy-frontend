@@ -91,7 +91,7 @@
                     <el-option label="trace" value="trace"></el-option>
                   </el-select>
                 </el-form-item>
-                <el-button type="success" @click="this.$chimera.putLiveLogging.reload()">Set</el-button>
+                <el-button type="success" @click="$chimera.putLiveLogging.reload()">Set</el-button>
               </el-form>
             </el-col>
           </el-row>
@@ -314,7 +314,7 @@ export default {
         params: JSON.stringify(this.newLogging),
         on: {
           success () {
-            this.$chimera.libeLogging.reload()
+            this.$chimera.liveLogging.reload()
           }
         }
       }
